@@ -6,26 +6,14 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Allow uploading build artifacts (APK, Wasm, web).
+# Allow uploading build artifacts (APK, Wasm).
 permissions:
   contents: read
 
-jobs:
-  web:
-    name: Build web app
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm install
-      - name: Build
-        run: npm run build
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/portdeck
+# This repo builds the native PortDeck app (Kotlin Multiplatform / Compose Multiplatform):
+# an Android APK and a Kotlin/Wasm distribution. The Next.js web app is intentionally excluded.
 
+jobs:
   android:
     name: Build Android APK
     runs-on: ubuntu-latest
