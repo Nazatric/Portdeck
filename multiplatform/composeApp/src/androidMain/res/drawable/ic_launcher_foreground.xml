@@ -1,0 +1,20 @@
+<!-- The PortDeck mark (bracketed slash), centred in the adaptive icon safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M45,37 L38,37 L38,71 L45,71 M63,37 L70,37 L70,71 L63,71"
+        android:fillColor="#00000000"
+        android:strokeColor="#EBE5E5"
+        android:strokeWidth="4.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M59,41 L49,67"
+        android:fillColor="#00000000"
+        android:strokeColor="#E0444E"
+        android:strokeWidth="4.6"
+        android:strokeLineCap="round" />
+</vector>

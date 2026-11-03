@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0e0c0d">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <title>PortDeck</title>
+  <style>
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #0e0c0d; }
+    canvas { outline: none; }
+    #boot { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: #0e0c0d; transition: opacity .3s ease; }
+    #boot.done { opacity: 0; pointer-events: none; }
+    #boot svg { width: 44px; height: 44px; animation: boot 1.4s ease-in-out infinite; }
+    @keyframes boot { 50% { opacity: .4; transform: scale(.94); } }
+    @media (prefers-reduced-motion: reduce) { #boot svg { animation: none; } }
+  </style>
+</head>
+<body>
+  <canvas id="ComposeTarget"></canvas>
+  <div id="boot" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4.5H5v15h3M16 4.5h3v15h-3" stroke="#ebe5e5"/><path d="M14 6 10 18" stroke="#e0444e"/></svg>
+  </div>
+  <script src="host.js"></script>
+  <script src="composeApp.js"></script>
+</body>
+</html>
