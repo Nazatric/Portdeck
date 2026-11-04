@@ -1,0 +1,10 @@
+<resources>
+    <style name="Theme.PortDeck" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/deck_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowSplashScreenBackground">@color/deck_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+    </style>
+</resources>

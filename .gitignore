@@ -1,0 +1,9 @@
+node_modules/
+.next/
+dist/
+.env*.local
+multiplatform/.gradle/
+multiplatform/.generated/
+multiplatform/**/build/
+multiplatform/local.properties
+*.log
