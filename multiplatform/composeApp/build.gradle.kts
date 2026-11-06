@@ -52,7 +52,7 @@ spotless {
         target("src/**/*.kt")
         // Files intentionally group related declarations (e.g. generated icon data),
         // so the filename/classname rule does not apply here.
-        ktlint("1.3.0").editorConfigOverride(mapOf("ktlint_standard_filename" to "disabled"))
+        ktlint("1.3.0").editorConfigOverride(mapOf("ktlint_standard_filename" to "disabled", "ktlint_function_naming_ignore_when_annotated_with" to "Composable"))
     }
     kotlinGradle {
         target("*.gradle.kts")

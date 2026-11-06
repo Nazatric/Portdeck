@@ -96,7 +96,7 @@ jobs:
           gradle :composeApp:spotlessApply --no-daemon -Dorg.gradle.jvmargs="-Xmx2g -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8" > /tmp/spotless.log 2>&1
           code=$?
           if [ $code -ne 0 ]; then
-            hint=$(grep -E -i -m 8 'what went wrong|unresolved|could not|failed|exception|error|non-zero|Lint error|\.kt[: ]' /tmp/spotless.log | sed 's/[%\r]//g' | tr '\n' '|' | cut -c1-1400)
+            hint=$(grep -E -i 'what went wrong|unresolved|could not|failed|exception|error|non-zero|Lint error|\.kt[: ]' /tmp/spotless.log | sed 's/[%\r]//g' | tr '\n' '|' | tail -c 1600)
             echo "::error::spotlessApply exit $code :: $hint"
             exit $code
           fi
