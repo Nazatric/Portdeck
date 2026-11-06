@@ -18,9 +18,16 @@ fun mimeFor(path: String): String {
     val ext = path.substringAfterLast('.', "").lowercase()
     return when (ext) {
         "js", "mjs", "cjs", "jsx", "ts", "tsx" -> "text/javascript"
-        "css" -> "text/css"; "html", "htm" -> "text/html"; "json", "map" -> "application/json"
-        "svg" -> "image/svg+xml"; "wasm" -> "application/wasm"; "webmanifest" -> "application/manifest+json"
-        "woff2" -> "font/woff2"; "woff" -> "font/woff"; "ttf" -> "font/ttf"; "otf" -> "font/otf"
+        "css" -> "text/css"
+        "html", "htm" -> "text/html"
+        "json", "map" -> "application/json"
+        "svg" -> "image/svg+xml"
+        "wasm" -> "application/wasm"
+        "webmanifest" -> "application/manifest+json"
+        "woff2" -> "font/woff2"
+        "woff" -> "font/woff"
+        "ttf" -> "font/ttf"
+        "otf" -> "font/otf"
         else -> MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "application/octet-stream"
     }
 }
@@ -57,8 +64,11 @@ class ProjectReader(private val context: Context) {
         fun walk(directory: DocumentFile, prefix: String) {
             for (file in directory.listFiles()) {
                 val name = file.name ?: continue
-                if (file.isDirectory) { if (name !in skippedDirs) walk(file, "$prefix$name/") }
-                else if (file.isFile) context.contentResolver.openInputStream(file.uri)?.use { write("$prefix$name", it) }
+                if (file.isDirectory) {
+                    if (name !in skippedDirs) walk(file, "$prefix$name/")
+                } else if (file.isFile) {
+                    context.contentResolver.openInputStream(file.uri)?.use { write("$prefix$name", it) }
+                }
             }
         }
         walk(tree, "")
@@ -86,7 +96,9 @@ class ProjectReader(private val context: Context) {
         finish(if (uris.size == 1) written.firstOrNull()?.path?.substringBeforeLast('.') ?: "Imported project" else "Imported project")
     }
 
-    private fun guarded(block: () -> DeckProject): DeckProject = try { block() } catch (error: Throwable) {
+    private fun guarded(block: () -> DeckProject): DeckProject = try {
+        block()
+    } catch (error: Throwable) {
         staging.deleteRecursively()
         throw if (error is java.io.IOException && error.message?.contains("ENOSPC") == true) IllegalStateException("There is not enough free storage on this device for this project.") else error
     }
@@ -106,7 +118,11 @@ class ProjectReader(private val context: Context) {
     }
 
     private fun detect(dir: File, paths: Set<String>): Pair<String, String> {
-        val pkg = try { JSONObject(File(dir, "package.json").takeIf { it.isFile }?.readText() ?: "{}") } catch (_: Exception) { JSONObject() }
+        val pkg = try {
+            JSONObject(File(dir, "package.json").takeIf { it.isFile }?.readText() ?: "{}")
+        } catch (_: Exception) {
+            JSONObject()
+        }
         val deps = (pkg.optJSONObject("dependencies")?.keys()?.asSequence()?.toSet() ?: emptySet()) + (pkg.optJSONObject("devDependencies")?.keys()?.asSequence()?.toSet() ?: emptySet())
         val built = builtDirs.map { "$it/index.html" }.firstOrNull { it in paths }
         if (built != null && unsupportedSources.any { it in deps }) return "HTML" to built

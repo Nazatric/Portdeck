@@ -6,10 +6,10 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
@@ -100,10 +100,13 @@ fun ShardBackdrop(active: Boolean, modifier: Modifier = Modifier) {
     val shards = remember {
         List(26) { index ->
             Shard(
-                x = Random.nextFloat(), y = Random.nextFloat(),
-                length = 0.06f + Random.nextFloat() * 0.2f, speed = 0.006f + Random.nextFloat() * 0.016f,
+                x = Random.nextFloat(),
+                y = Random.nextFloat(),
+                length = 0.06f + Random.nextFloat() * 0.2f,
+                speed = 0.006f + Random.nextFloat() * 0.016f,
                 width = if (index % 9 == 0) 1.3f else 0.6f + Random.nextFloat() * 0.5f,
-                alpha = 0.025f + Random.nextFloat() * 0.08f, accent = index % 9 == 0,
+                alpha = 0.025f + Random.nextFloat() * 0.08f,
+                accent = index % 9 == 0,
             )
         }
     }
@@ -119,8 +122,13 @@ fun ShardBackdrop(active: Boolean, modifier: Modifier = Modifier) {
                         shard.x += SHARD_COS * shard.speed * delta
                         shard.y += SHARD_SIN * shard.speed * delta
                         if (shard.x > 1.15f || shard.y < -0.15f) {
-                            if (Random.nextFloat() < 0.55f) { shard.x = Random.nextFloat(); shard.y = 1.05f + Random.nextFloat() * 0.1f }
-                            else { shard.x = -0.05f - shard.length; shard.y = Random.nextFloat() }
+                            if (Random.nextFloat() < 0.55f) {
+                                shard.x = Random.nextFloat()
+                                shard.y = 1.05f + Random.nextFloat() * 0.1f
+                            } else {
+                                shard.x = -0.05f - shard.length
+                                shard.y = Random.nextFloat()
+                            }
                         }
                     }
                 }
@@ -148,8 +156,14 @@ fun Logo(size: Dp = 22.dp, modifier: Modifier = Modifier) {
         val unit = this.size.width / 24f
         val stroke = Stroke(width = 2.1f * unit, cap = StrokeCap.Round, join = StrokeJoin.Round)
         val brackets = Path().apply {
-            moveTo(8f * unit, 4.5f * unit); lineTo(5f * unit, 4.5f * unit); lineTo(5f * unit, 19.5f * unit); lineTo(8f * unit, 19.5f * unit)
-            moveTo(16f * unit, 4.5f * unit); lineTo(19f * unit, 4.5f * unit); lineTo(19f * unit, 19.5f * unit); lineTo(16f * unit, 19.5f * unit)
+            moveTo(8f * unit, 4.5f * unit)
+            lineTo(5f * unit, 4.5f * unit)
+            lineTo(5f * unit, 19.5f * unit)
+            lineTo(8f * unit, 19.5f * unit)
+            moveTo(16f * unit, 4.5f * unit)
+            lineTo(19f * unit, 4.5f * unit)
+            lineTo(19f * unit, 19.5f * unit)
+            lineTo(16f * unit, 19.5f * unit)
         }
         drawPath(brackets, Deck.Text, style = stroke)
         drawLine(Deck.Accent, Offset(14f * unit, 6f * unit), Offset(10f * unit, 18f * unit), strokeWidth = 2.1f * unit, cap = StrokeCap.Round)
@@ -182,7 +196,10 @@ fun Pressable(
     val highlight by animateFloatAsState(if (pressed) 0.07f else 0f, tween(if (pressed) 60 else 380), label = "highlight")
     Box(
         modifier
-            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .clip(shape)
             .background(background)
             .then(if (border != null) Modifier.border(1.dp, border, shape) else Modifier)
@@ -206,7 +223,10 @@ fun PrimaryButton(label: String, icon: ImageVector?, onClick: () -> Unit, modifi
             Modifier.fillMaxHeight().background(Brush.verticalGradient(listOf(Color(0xFFE44D57), Color(0xFFC2333E)))).padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (icon != null) { DeckIcon(icon, Color.White, size = 16.dp); Spacer(Modifier.width(8.dp)) }
+            if (icon != null) {
+                DeckIcon(icon, Color.White, size = 16.dp)
+                Spacer(Modifier.width(8.dp))
+            }
             Text(label, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         }
     }
@@ -227,5 +247,10 @@ fun Reveal(delayMillis: Int = 0, modifier: Modifier = Modifier, content: @Compos
         kotlinx.coroutines.delay(delayMillis.toLong())
         progress.animateTo(1f, spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessLow))
     }
-    Box(modifier.graphicsLayer { alpha = progress.value.coerceIn(0f, 1f); translationY = (1f - progress.value) * 14.dp.toPx() }) { content() }
+    Box(
+        modifier.graphicsLayer {
+            alpha = progress.value.coerceIn(0f, 1f)
+            translationY = (1f - progress.value) * 14.dp.toPx()
+        },
+    ) { content() }
 }

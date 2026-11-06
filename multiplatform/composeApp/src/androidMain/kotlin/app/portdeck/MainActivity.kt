@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import java.io.InputStream
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +45,7 @@ import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileInputStream
+import java.io.InputStream
 
 /** Serves imported projects from app storage at /project/<id>/<path>, with headers the sandboxed preview needs. */
 private class ProjectFiles(private val root: File) : WebViewAssetLoader.PathHandler {
@@ -89,8 +89,11 @@ class MainActivity : ComponentActivity() {
                         val imported = withContext(Dispatchers.IO) { load() }
                         withContext(Dispatchers.IO) { persistProjects(listOf(imported) + projects.filterNot { it.id == imported.id }) }
                         projects = listOf(imported) + projects.filterNot { it.id == imported.id }
-                        project = imported; logs = emptyList()
-                    } catch (failure: Exception) { error = failure.message ?: "Could not import this project." }
+                        project = imported
+                        logs = emptyList()
+                    } catch (failure: Exception) {
+                        error = failure.message ?: "Could not import this project."
+                    }
                 }
             }
 
@@ -101,13 +104,18 @@ class MainActivity : ComponentActivity() {
                         persistProjects(projects.filterNot { it.id == target.id })
                     }
                     projects = projects.filterNot { it.id == target.id }
-                    if (project?.id == target.id) { project = null; logs = emptyList() }
+                    if (project?.id == target.id) {
+                        project = null
+                        logs = emptyList()
+                    }
                 }
             }
 
             val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
                 if (uri != null) {
-                    try { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: Exception) { }
+                    try {
+                        contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    } catch (_: Exception) { }
                     openImported { ProjectReader(this).folder(uri) }
                 }
             }
@@ -116,7 +124,12 @@ class MainActivity : ComponentActivity() {
 
             // System back returns to the library instead of closing the app.
             BackHandler(enabled = project != null || error.isNotEmpty()) {
-                if (error.isNotEmpty()) error = "" else { project = null; logs = emptyList() }
+                if (error.isNotEmpty()) {
+                    error = ""
+                } else {
+                    project = null
+                    logs = emptyList()
+                }
             }
 
             PortDeckApp(
@@ -129,24 +142,46 @@ class MainActivity : ComponentActivity() {
                     }
                 },
                 onDemo = { id ->
-                    try { project = projectJson.decodeFromString<List<DeckProject>>(assets.open("demos.json").bufferedReader().readText()).first { it.id == id }; logs = emptyList() }
-                    catch (failure: Exception) { error = failure.message ?: "Could not open the demo." }
+                    try {
+                        project = projectJson.decodeFromString<List<DeckProject>>(assets.open("demos.json").bufferedReader().readText()).first { it.id == id }
+                        logs = emptyList()
+                    } catch (failure: Exception) {
+                        error = failure.message ?: "Could not open the demo."
+                    }
                 },
-                onOpenProject = { target -> project = target; logs = emptyList() },
+                onOpenProject = { target ->
+                    project = target
+                    logs = emptyList()
+                },
                 onDeleteProject = ::deleteProject,
-                onBack = { if (error.isNotEmpty()) error = "" else { project = null; logs = emptyList() } },
-                onReload = { reload++; logs = emptyList() },
+                onBack = {
+                    if (error.isNotEmpty()) {
+                        error = ""
+                    } else {
+                        project = null
+                        logs = emptyList()
+                    }
+                },
+                onReload = {
+                    reload++
+                    logs = emptyList()
+                },
                 onImmersive = { setSystemBarsHidden(it) },
                 readSource = { file, done ->
                     val inline = file.content
                     val current = project
-                    if (inline != null || current == null) done(inline ?: "")
-                    else scope.launch {
-                        done(withContext(Dispatchers.IO) {
-                            val target = File(filesDir, "projects/${current.id}/${file.path}")
-                            val textual = file.type.startsWith("text/") || file.type.contains("json") || file.type.contains("javascript") || file.type.contains("xml") || file.type.contains("svg")
-                            if (!textual || !target.isFile) "" else target.inputStream().use { input -> String(input.readNBytesCompat(3 * 1024 * 1024)) }
-                        })
+                    if (inline != null || current == null) {
+                        done(inline ?: "")
+                    } else {
+                        scope.launch {
+                            done(
+                                withContext(Dispatchers.IO) {
+                                    val target = File(filesDir, "projects/${current.id}/${file.path}")
+                                    val textual = file.type.startsWith("text/") || file.type.contains("json") || file.type.contains("javascript") || file.type.contains("xml") || file.type.contains("svg")
+                                    if (!textual || !target.isFile) "" else target.inputStream().use { input -> String(input.readNBytesCompat(3 * 1024 * 1024)) }
+                                },
+                            )
+                        }
                     }
                 },
                 preview = { item, width, height, _ -> NativePreview(item, reload, width, height) { message -> logs = (logs + message).takeLast(120) } },
@@ -156,7 +191,12 @@ class MainActivity : ComponentActivity() {
 
     /** Many phones keep apps at 60 Hz unless asked; request the panel's fastest mode at the current resolution. */
     private fun requestHighestRefreshRate() {
-        val screen = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) display else @Suppress("DEPRECATION") windowManager.defaultDisplay
+        val screen = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            display
+        } else {
+            @Suppress("DEPRECATION")
+            windowManager.defaultDisplay
+        }
         val current = screen?.mode ?: return
         val fastest = screen.supportedModes
             .filter { it.physicalWidth == current.physicalWidth && it.physicalHeight == current.physicalHeight }
@@ -185,7 +225,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun persistProjects(list: List<DeckProject>) {
-        try { filesDir.resolve("projects.json").writeText(projectJson.encodeToString(list)) } catch (_: Exception) { }
+        try {
+            filesDir.resolve("projects.json").writeText(projectJson.encodeToString(list))
+        } catch (_: Exception) { }
     }
 
     private fun chooseUpload(callback: ValueCallback<Array<Uri>>, params: WebChromeClient.FileChooserParams): Boolean = try {
@@ -193,20 +235,31 @@ class MainActivity : ComponentActivity() {
         uploadCallback = callback
         uploadPicker.launch(params.createIntent())
         true
-    } catch (_: Exception) { uploadCallback = null; false }
+    } catch (_: Exception) {
+        uploadCallback = null
+        false
+    }
 
     private inner class EngineBridge(private val id: String, private val onLog: (String) -> Unit) {
         fun readStorage(): String = getSharedPreferences("preview-storage", MODE_PRIVATE).getString(id, "{}") ?: "{}"
 
         fun onMessage(value: String) {
-            val parsed = try { JSONObject(value) } catch (_: Exception) { JSONObject() }
+            val parsed = try {
+                JSONObject(value)
+            } catch (_: Exception) {
+                JSONObject()
+            }
             val type = parsed.optString("type")
             if (type == "storage") {
                 val storage = parsed.optJSONObject("data")?.toString() ?: "{}"
                 if (storage.length < 500_000) getSharedPreferences("preview-storage", MODE_PRIVATE).edit().putString(id, storage).apply()
             }
             val text = parsed.optString("text")
-            val message = when (type) { "error" -> "ERROR: $text"; "warn", "warning" -> "WARN: $text"; else -> text }
+            val message = when (type) {
+                "error" -> "ERROR: $text"
+                "warn", "warning" -> "WARN: $text"
+                else -> text
+            }
             runOnUiThread { if (text.isNotBlank()) onLog(message) }
         }
     }
@@ -224,14 +277,19 @@ class MainActivity : ComponentActivity() {
     private fun InputStream.readNBytesCompat(limit: Int): ByteArray {
         val out = java.io.ByteArrayOutputStream()
         val buffer = ByteArray(64 * 1024)
-        while (out.size() < limit) { val count = read(buffer, 0, minOf(buffer.size, limit - out.size())); if (count < 0) break; out.write(buffer, 0, count) }
+        while (out.size() < limit) {
+            val count = read(buffer, 0, minOf(buffer.size, limit - out.size()))
+            if (count < 0) break
+            out.write(buffer, 0, count)
+        }
         return out.toByteArray()
     }
 
     @Composable
     private fun NativePreview(project: DeckProject, reload: Int, width: Int, height: Int, onLog: (String) -> Unit) {
         val viewport = remember { intArrayOf(0, 0) }
-        viewport[0] = width; viewport[1] = height
+        viewport[0] = width
+        viewport[1] = height
         val context = LocalContext.current
         val payload = remember(project) { projectJson.encodeToString(project) }
         val bridge = remember(project) { EngineBridge(project.id, onLog) }
@@ -264,7 +322,9 @@ class MainActivity : ComponentActivity() {
                     }
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                         if (request.isForMainFrame && request.url.scheme in listOf("http", "https") && request.url.host != "appassets.androidplatform.net") {
-                            try { context.startActivity(Intent(Intent.ACTION_VIEW, request.url)) } catch (_: Exception) { }
+                            try {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, request.url))
+                            } catch (_: Exception) { }
                             return true
                         }
                         return false
@@ -279,7 +339,10 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(width, height) { webView.evaluateJavascript("window.portdeckViewport&&window.portdeckViewport($width,$height)", null) }
         AndroidView(factory = { webView }, modifier = Modifier.fillMaxSize(), update = { view ->
             val key = "${project.id}:$reload"
-            if (view.tag != key) { view.tag = key; view.loadUrl("https://appassets.androidplatform.net/assets/engine/index.html") }
+            if (view.tag != key) {
+                view.tag = key
+                view.loadUrl("https://appassets.androidplatform.net/assets/engine/index.html")
+            }
         })
     }
 }

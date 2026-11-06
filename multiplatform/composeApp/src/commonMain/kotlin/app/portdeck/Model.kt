@@ -23,7 +23,10 @@ fun formatSize(bytes: Long): String {
     val units = listOf("KB", "MB", "GB", "TB")
     var value = bytes / 1024.0
     var unit = 0
-    while (value >= 1024 && unit < units.lastIndex) { value /= 1024; unit++ }
+    while (value >= 1024 && unit < units.lastIndex) {
+        value /= 1024
+        unit++
+    }
     val rounded = if (value >= 100) value.toLong().toString() else ((value * 10).toLong() / 10.0).toString()
     return "$rounded ${units[unit]}"
 }

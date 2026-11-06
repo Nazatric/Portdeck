@@ -42,7 +42,10 @@ android {
     sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
     sourceSets["main"].assets.srcDirs("src/androidMain/assets")
     sourceSets["main"].res.srcDirs("src/androidMain/res")
-    compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
     buildFeatures { compose = true }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 }
@@ -52,7 +55,12 @@ spotless {
         target("src/**/*.kt")
         // Files intentionally group related declarations (e.g. generated icon data),
         // so the filename/classname rule does not apply here.
-        ktlint("1.3.0").editorConfigOverride(mapOf("ktlint_standard_filename" to "disabled", "ktlint_function_naming_ignore_when_annotated_with" to "Composable"))
+        ktlint("1.3.0").editorConfigOverride(
+            mapOf(
+                "ktlint_standard_filename" to "disabled",
+                "ktlint_function_naming_ignore_when_annotated_with" to "Composable",
+            ),
+        )
     }
     kotlinGradle {
         target("*.gradle.kts")
