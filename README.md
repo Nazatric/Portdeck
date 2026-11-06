@@ -17,7 +17,7 @@ A calm, full-screen workspace for opening and previewing local React, Next.js-st
 
 ```sh
 cd multiplatform
-./gradlew :composeApp:assembleDebug --no-daemon
+gradle :composeApp:assembleDebug --no-daemon   # Gradle 8.11.1; CI installs it for you
 ```
 
 The Android app draws edge to edge, requests the display's highest refresh rate, keeps its state across rotation, returns to the library on system back, hides the system bars in full screen, and has an adaptive launcher icon and dark splash. Imported apps run in a sandboxed WebView; the interface itself is native Compose.
@@ -52,7 +52,7 @@ npm run build        # rewrites ../composeApp/src/androidMain/assets/engine/engi
 node tools/generate-assets.mjs
 ```
 
-Formatting and code style: [prettier](https://prettier.io) for the engine (`npm run format`), [Spotless](https://github.com/diffplug/spotless) with ktlint for the Kotlin sources (`./gradlew :composeApp:spotlessApply`). CI enforces both.
+Formatting and code style: [prettier](https://prettier.io) for the engine (`npm run format`), [Spotless](https://github.com/diffplug/spotless) with ktlint for the Kotlin sources (`gradle :composeApp:spotlessApply`). CI enforces both.
 
 ## Build in CI
 

@@ -78,21 +78,29 @@ jobs:
       - name: Install SDK packages
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Set up Gradle (cached)
+      - name: Install Gradle 8.11.1
+        run: |
+          GRADLE_VERSION=8.11.1
+          curl -fsSL "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /opt
+          echo "/opt/gradle-${GRADLE_VERSION}/bin" >> "$GITHUB_PATH"
+
+      # Caches the Gradle user home (dependency cache, build cache) between runs.
+      - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
       - name: Format Kotlin sources with spotless/ktlint
         working-directory: multiplatform
-        run: ./gradlew :composeApp:spotlessApply --no-daemon -Dorg.gradle.jvmargs="-Xmx2g -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
+        run: gradle :composeApp:spotlessApply --no-daemon -Dorg.gradle.jvmargs="-Xmx2g -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
 
       - name: Warn if formatting drift snuck in
         continue-on-error: true
         run: |
-          git diff --exit-code || echo "::warning::Kotlin sources were not spotless-formatted; run ./gradlew :composeApp:spotlessApply locally."
+          git diff --exit-code || echo "::warning::Kotlin sources were not spotless-formatted; run gradle :composeApp:spotlessApply locally."
 
       - name: Assemble debug APK
         working-directory: multiplatform
-        run: ./gradlew :composeApp:assembleDebug --no-daemon -Dorg.gradle.jvmargs="-Xmx2g -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
+        run: gradle :composeApp:assembleDebug --no-daemon -Dorg.gradle.jvmargs="-Xmx2g -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
