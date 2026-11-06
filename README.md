@@ -52,7 +52,7 @@ npm run build        # rewrites ../composeApp/src/androidMain/assets/engine/engi
 node tools/generate-assets.mjs
 ```
 
-Formatting and code style: [prettier](https://prettier.io) for the engine (`npm run format`), [Spotless](https://github.com/diffplug/spotless) with ktlint for the Kotlin sources (`gradle :composeApp:spotlessApply`). CI enforces both.
+Formatting and code style: [prettier](https://prettier.io) for the engine (`npm run format`, enforced by CI), [Spotless](https://github.com/diffplug/spotless) with ktlint for the Kotlin sources. CI applies Spotless on every Android build; if the tree changed it pushes an `Apply spotless ktlint formatting` commit back to the branch, so committed code always matches what CI builds. To apply formatting locally, run `gradle :composeApp:spotlessApply`.
 
 ## Build in CI
 
