@@ -61,7 +61,10 @@ async function build(page?: string) {
 let viewport = { width: 0, height: 0 };
 function applyViewport() {
   if (!viewport.width) {
-    Object.assign(frame.style, { width: '100%', height: '100%', transform: 'none' });
+    // Viewport units, not percentages: the percentage-height chain (html/body/iframe)
+    // can resolve to zero in some WebView configurations and collapse the frame to an
+    // invisible, white page.
+    Object.assign(frame.style, { width: '100vw', height: '100vh', transform: 'none' });
     return;
   }
   const scale = Math.min(window.innerWidth / viewport.width, window.innerHeight / viewport.height);
