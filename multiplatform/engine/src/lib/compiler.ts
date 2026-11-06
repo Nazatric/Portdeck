@@ -2,6 +2,7 @@ import * as Babel from '@babel/standalone';
 import { init, parse } from 'es-module-lexer/minimal';
 import { ASSET_FILE, CODE_FILE, HTML_FILE, STYLE_FILE } from './mime';
 import { createNetContext, loadNetAsset, loadNetCss, loadNetModule, netKey } from './net';
+import { loadNpmPackage, normalizeNpmPath, probeNpmFile, resolveEntrySubpath, type NpmPackage } from './npm';
 import type { DeckProject, FileSource } from './types';
 import { REACT_VENDORS } from './vendor/react.generated';
 
@@ -326,6 +327,148 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
     return path;
   };
 
+  const npmEntryKey = (spec: string) => `@npm/${spec}`;
+  const npmModuleKey = (pkg: NpmPackage, path: string) => `@npm/${pkg.name}@${pkg.version}/${path}`;
+  const npmStubKey = (label: string) => `@npm/#stub/${label.replace(/[^\w./@-]/g, '_')}`;
+
+  const fallbackToCdn = (spec: string, key: string) => {
+    const name = spec.startsWith('@') ? spec.split('/').slice(0, 2).join('/') : spec.split('/')[0];
+    const url = npmUrl(spec, 'module');
+    loadPackage(name, url);
+    modules.set(key, `import d, * as m from ${JSON.stringify(url)};export * from ${JSON.stringify(url)};export default d;`);
+  };
+
+  const esmSpecifierFor = (pkg: NpmPackage, path: string): string => {
+    const trimmed = path.replace(/\.(m?js|cjs|json)$/, '').replace(/(^|\/)index$/, '');
+    return trimmed ? `${pkg.name}/${trimmed}` : pkg.name;
+  };
+
+  const ensureNpmStub = (label: string): string => {
+    const key = npmStubKey(label);
+    if (!modules.has(key)) modules.set(key, 'export default {};');
+    return key;
+  };
+
+  // eslint-disable-next-line prefer-const
+  let rewriteNpmModule: (pkg: NpmPackage, path: string, key: string) => Promise<void>;
+
+  const ensureNpmModule = (pkg: NpmPackage, path: string): string => {
+    const key = npmModuleKey(pkg, path);
+    if (!modules.has(key)) {
+      modules.set(key, '');
+      track(rewriteNpmModule(pkg, path, key));
+    }
+    return key;
+  };
+
+  rewriteNpmModule = async (pkg: NpmPackage, path: string, key: string): Promise<void> => {
+    try {
+      const code = pkg.files.get(path);
+      if (code === undefined) throw new Error(`${path} is missing from the tarball`);
+      if (path.endsWith('.json')) {
+        try {
+          JSON.parse(code);
+          modules.set(key, `export default ${code};`);
+        } catch {
+          warnings.add(`${pkg.name}@${pkg.version}: "${path}" is not valid JSON; using an empty object.`);
+          modules.set(key, 'export default {};');
+        }
+        packages.set(pkg.name, true);
+        return;
+      }
+      await init();
+      const [imports] = parse(code);
+      if (imports.length === 0) {
+        modules.set(key, code);
+        packages.set(pkg.name, true);
+        return;
+      }
+      const dir = path.split('/').slice(0, -1).join('/');
+      const pieces: string[] = [];
+      let cursor = 0;
+      for (const item of imports) {
+        if (!item.n) continue;
+        const spec = item.n;
+        const dynamic = item.d >= 0;
+        const emit = (resolved: string) => {
+          pieces.push(code.slice(cursor, item.s), dynamic ? JSON.stringify(resolved) : resolved);
+          cursor = item.e;
+        };
+        // Relative or absolute-path imports inside the package: resolve file-relative, like Node.
+        if (spec.startsWith('./') || spec.startsWith('../') || spec.startsWith('/')) {
+          const base = spec.startsWith('/') ? normalizeNpmPath(spec.slice(1)) : normalizeNpmPath(dir ? `${dir}/${spec}` : spec);
+          if (/\.(css|scss|less|sass|styl|wasm|node)$/.test(base)) {
+            emit(ensureNpmStub(`${pkg.name}@${pkg.version}/${base}`));
+            continue;
+          }
+          const probed = probeNpmFile(pkg.files, base);
+          if (probed) {
+            emit(ensureNpmModule(pkg, probed));
+          } else {
+            warnings.add(`${pkg.name}@${pkg.version}: "${spec}" imported by "${path}" is missing; using a placeholder.`);
+            emit(ensureNpmStub(`${key}#missing:${spec}`));
+          }
+          continue;
+        }
+        if (isRemote(spec)) {
+          const url = spec.startsWith('//') ? `https:${spec}` : spec;
+          track(loadNetModule(url, net));
+          emit(url);
+          continue;
+        }
+        const builtin = spec.replace(/^node:/, '');
+        if (NODE_BUILTINS.test(builtin)) {
+          const polyfill = NODE_POLYFILLS[builtin];
+          track(loadNetModule(polyfill, net));
+          emit(polyfill);
+          continue;
+        }
+        // Self-references from inside the package go through the exports map, as they should.
+        if (spec === pkg.name || spec.startsWith(`${pkg.name}/`)) {
+          const sub = spec.slice(pkg.name.length).replace(/^\//, '');
+          const entry = resolveEntrySubpath(pkg, sub);
+          if (entry) {
+            emit(ensureNpmModule(pkg, entry));
+            continue;
+          }
+        }
+        if (/\.(css|scss|less|sass|styl|wasm)$/.test(spec)) {
+          emit(ensureNpmStub(`${pkg.name}@${pkg.version}/${spec}`));
+          continue;
+        }
+        // A transitive dependency: keep the CDN strategy for it.
+        const depName = spec.startsWith('@') ? spec.split('/').slice(0, 2).join('/') : spec.split('/')[0];
+        const depVersion = exactVersion(pkg.dependencies?.[depName] ?? versions[depName] ?? '');
+        const url = `https://esm.sh/${depName}${depVersion ? `@${depVersion}` : ''}${spec.slice(depName.length)}?external=react,react-dom&target=es2022`;
+        track(loadNetModule(url, net));
+        emit(url);
+      }
+      pieces.push(code.slice(cursor));
+      modules.set(key, pieces.join(''));
+      packages.set(pkg.name, true);
+    } catch {
+      warnings.add(`${pkg.name}@${pkg.version}: "${path}" could not be bundled; it is loading from the CDN.`);
+      fallbackToCdn(esmSpecifierFor(pkg, path), key);
+    }
+  };
+
+  const bundleNpmEntry = async (spec: string, name: string, version: string, key: string): Promise<void> => {
+    const pkg = await loadNpmPackage(name, version);
+    if (!pkg) {
+      warnings.add(`"${spec}" could not be fetched from the npm registry; loading it from the CDN.`);
+      fallbackToCdn(spec, key);
+      return;
+    }
+    const sub = spec.slice(name.length).replace(/^\//, '');
+    const entry = resolveEntrySubpath(pkg, sub);
+    if (!entry) {
+      warnings.add(`"${spec}" was not found in ${name}@${version}; loading it from the CDN.`);
+      fallbackToCdn(spec, key);
+      return;
+    }
+    await rewriteNpmModule(pkg, entry, key);
+  };
+
   const npmUrl = (spec: string, kind: 'module' | 'css') => {
     const name = spec.startsWith('@') ? spec.split('/').slice(0, 2).join('/') : spec.split('/')[0];
     const version = exactVersion(versions[name]);
@@ -445,6 +588,21 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
     if (NODE_UNSUPPORTED.test(bare)) {
       warnings.add(`${bare} is a Node.js built-in with no browser equivalent, so it is empty in the preview.`);
       return 'data:text/javascript,export default {};';
+    }
+    // Bundle npm packages straight from the registry. CDN transform services can mis-resolve a
+    // package's exports map (drizzle-orm's pg-core/utils is the field example), so file-relative
+    // tarball resolution is the correct-by-construction path. Falls back to the CDN on any failure.
+    if (!STYLE_FILE.test(bare)) {
+      const bundledName = bare.startsWith('@') ? bare.split('/').slice(0, 2).join('/') : bare.split('/')[0];
+      const bundledVersion = exactVersion(versions[bundledName]);
+      if (bundledVersion) {
+        const key = npmEntryKey(bare);
+        if (!modules.has(key)) {
+          modules.set(key, '');
+          track(bundleNpmEntry(bare, bundledName, bundledVersion, key));
+        }
+        return key;
+      }
     }
     const name = bare.startsWith('@') ? bare.split('/').slice(0, 2).join('/') : bare.split('/')[0];
     if (STYLE_FILE.test(bare)) {

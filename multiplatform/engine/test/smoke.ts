@@ -13,6 +13,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+import { resolveConditions, resolveEntrySubpath, resolveExports, probeNpmFile, normalizeNpmPath, type NpmPackage } from '../src/lib/npm';
 import { buildPreview } from '../src/lib/compiler';
 import { createPayload, previewDocument } from '../src/lib/runtime';
 import { blobSource, inlineBlobs } from '../src/lib/store';
@@ -23,6 +24,54 @@ const root = join(here, '..', '..', 'composeApp', 'src');
 const demos: DeckProject[] = JSON.parse(readFileSync(join(root, 'androidMain', 'assets', 'demos.json'), 'utf8'));
 
 const toBlobs = (project: DeckProject) => inlineBlobs(project.files.map((file) => ({ path: file.path, content: file.content ?? '' })));
+
+/* ------------------------------ npm resolution unit tests ------------------------------ */
+{
+  // Conditions nested the way drizzle-orm actually nests them.
+  const drizzleLikeExports = {
+    '.': { types: './index.d.ts', import: { types: './index.d.ts', default: './index.js' }, default: './index.js' },
+    './pg-core': { types: './pg-core/index.d.ts', import: { default: './pg-core/index.js' }, default: './pg-core/index.js' },
+    './pg-core/utils': {
+      types: './pg-core/utils/index.d.ts',
+      import: { default: './pg-core/utils/index.js' },
+      default: './pg-core/utils/index.js',
+    },
+    './columns/*': { types: './pg-core/columns/*.d.ts', import: { default: './pg-core/columns/*.js' }, default: './pg-core/columns/*.cjs' },
+  };
+  assert.equal(resolveExports(drizzleLikeExports, '.'), './index.js');
+  assert.equal(resolveExports(drizzleLikeExports, './pg-core'), './pg-core/index.js');
+  assert.equal(resolveExports(drizzleLikeExports, 'pg-core'), './pg-core/index.js');
+  assert.equal(resolveExports(drizzleLikeExports, './pg-core/utils'), './pg-core/utils/index.js');
+  assert.equal(resolveExports(drizzleLikeExports, './columns/integer'), './pg-core/columns/integer.js');
+  assert.equal(resolveExports(drizzleLikeExports, './missing'), null);
+  assert.equal(resolveConditions({ require: './cjs.js', import: './esm.mjs' }), './esm.mjs');
+
+  const files = new Map<string, string>([
+    ['index.js', ''],
+    ['pg-core/index.js', ''],
+    ['pg-core/utils.js', ''], // the file Node file-relative imports get, with extractUsedTable
+    ['pg-core/utils/index.js', ''], // the file the exports map points at (arrays only)
+    ['pg-core/query-builders/select.js', ''],
+  ]);
+  const pkg: NpmPackage = {
+    name: 'drizzle-orm',
+    version: '0.45.2',
+    files,
+    dependencies: {},
+    exportsField: drizzleLikeExports,
+    module: undefined,
+    main: undefined,
+  };
+  // Self-contained tarball: the exports entry resolves, and internal RELATIVE imports bypass the
+  // exports map entirely and land on the real file (pg-core/utils.js, not the arrays-only shim).
+  assert.equal(resolveEntrySubpath(pkg, 'pg-core'), 'pg-core/index.js');
+  assert.equal(resolveEntrySubpath(pkg, ''), 'index.js');
+  assert.equal(resolveEntrySubpath(pkg, 'pg-core/utils'), 'pg-core/utils/index.js');
+  assert.equal(probeNpmFile(files, 'pg-core/query-builders/select'), 'pg-core/query-builders/select.js');
+  assert.equal(probeNpmFile(files, 'pg-core/missing'), null);
+  assert.equal(normalizeNpmPath('pg-core/../utils.js'), 'utils.js');
+  console.log('npm-resolution: ok');
+}
 
 /* ---------------------------------- fake DOM ---------------------------------- */
 
