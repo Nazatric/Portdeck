@@ -1,26 +1,26 @@
-import { BlobReader, TextWriter, ZipReader, configure } from '@zip.js/zip.js';
 import { cachedFetch } from './net';
 
 /**
- * Bundles npm packages straight from the registry, bypassing CDN transform services.
+ * Bundles npm packages from the npm registry, bypassing CDN transform services like esm.sh.
  *
- * es-module-lexer and fetch alone cannot run a bundler, but they CAN reconstruct Node's module
- * semantics: fetch the tarball, extract it, then resolve imports file-relative (exactly what Node
- * does for ESM) and only resolve the public entry specifier through the package's "exports" map.
- * This matters because CDN services that route every import through "exports" can silently drop
- * things: drizzle-orm ships pg-core/utils.js (with extractUsedTable) AND a "./pg-core/utils"
- * exports entry that points at the array-only utils/ directory. jsdelivr/esm.sh builds map the
- * relative import to the exports entry, so the query builders fail to link with
- * "does not provide an export named 'extractUsedTable'". File-relative resolution serves the
- * file the package author actually wrote, which always works.
+ * esm.sh and jsdelivr's +esm endpoint route every import through a package's "exports" map. That
+ * breaks drizzle-orm: its "./pg-core/utils" exports entry points at the array-only
+ * pg-core/utils/index.js, while the file its query builders import file-relative
+ * (pg-core/utils.js, which exports extractUsedTable) is a different file entirely. Node resolves
+ * the file-relative import to the file, so this module reproduces Node's ESM semantics:
+ *
+ *   - the "exports" map is consulted ONLY for the public entry specifier (drizzle-orm/pg-core…);
+ *   - every import INSIDE the package is resolved file-relative against the extracted tarball;
+ *   - the package's own files are served exactly as published, so resolution is always consistent.
+ *
+ * npm tarballs are gzip'd TAR, read here with DecompressionStream plus a small ustar/pax parser.
+ * The tarball is immutable, so Cache Storage keeps it for offline previews.
  */
-
-configure({ useWebWorkers: false });
 
 export interface NpmPackage {
   name: string;
   version: string;
-  /** Extracted text files, keyed by path relative to the tarball root, forward slashes. */
+  /** Extracted files, keyed by path relative to the tarball root ("package/" is stripped). */
   files: Map<string, string>;
   dependencies: Record<string, string>;
   exportsField: unknown;
@@ -31,6 +31,7 @@ export interface NpmPackage {
 const MAX_FILES = 6000;
 const MAX_BYTES = 24 * 1024 * 1024;
 const TEXT_FILE = /\.(m?js|cjs|json)$/;
+const decoder = new TextDecoder('utf-8');
 
 export const normalizeNpmPath = (path: string): string => {
   const parts: string[] = [];
@@ -46,6 +47,82 @@ const stripTarballRoot = (filename: string): string => {
   const slash = filename.indexOf('/');
   return slash === -1 ? normalizeNpmPath(filename) : normalizeNpmPath(filename.slice(slash + 1));
 };
+
+/** Parses a TAR archive into its regular files. Handles ustar prefixes, GNU long names and PAX paths. */
+export function parseTar(bytes: Uint8Array): Map<string, Uint8Array> {
+  const files = new Map<string, Uint8Array>();
+  const text = (start: number, length: number) => {
+    let end = start;
+    while (end < start + length && bytes[end] !== 0) end++;
+    return decoder.decode(bytes.subarray(start, end));
+  };
+  const octal = (start: number, length: number) => {
+    const raw = text(start, length).trim();
+    if (!raw) return 0;
+    const parsed = parseInt(raw, 8);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const parsePaxPath = (data: Uint8Array): string | null => {
+    // PAX extended header records: "<length> <key>=<value>\n"
+    let cursor = 0;
+    while (cursor < data.length) {
+      const space = data.indexOf(0x20, cursor);
+      if (space === -1) break;
+      const length = parseInt(decoder.decode(data.subarray(cursor, space)), 10);
+      if (!Number.isFinite(length) || length <= 0) break;
+      const record = decoder.decode(data.subarray(space + 1, cursor + length));
+      const equals = record.indexOf('=');
+      const newline = record.indexOf('\n');
+      if (equals !== -1 && newline === record.length - 1 && record.slice(0, equals) === 'path') return record.slice(equals + 1, newline);
+      cursor += length;
+    }
+    return null;
+  };
+  let offset = 0;
+  let pendingLongName: string | null = null;
+  let pendingPaxPath: string | null = null;
+  while (offset + 512 <= bytes.length) {
+    const header = offset;
+    let allZero = true;
+    for (let index = 0; index < 512; index++) {
+      if (bytes[header + index] !== 0) {
+        allZero = false;
+        break;
+      }
+    }
+    if (allZero) {
+      offset += 512;
+      continue;
+    }
+    const name = text(header, 100);
+    const size = octal(header + 124, 12);
+    const typeflag = bytes[header + 156];
+    const magic = text(header + 257, 6);
+    const prefix = magic.startsWith('ustar') ? text(header + 345, 155) : '';
+    const fullName = prefix ? `${prefix}/${name}` : name;
+    const dataStart = offset + 512;
+    const dataEnd = Math.min(dataStart + size, bytes.length);
+    const padded = dataStart + Math.ceil(size / 512) * 512;
+    if (typeflag === 76) {
+      // GNU long name: the payload is the name of the next entry.
+      pendingLongName = decoder.decode(bytes.subarray(dataStart, dataEnd)).replace(/\0[\s\S]*$/, '');
+    } else if (typeflag === 120 || typeflag === 103) {
+      // PAX extended header ('x') or global header ('g'): look for a path override.
+      pendingPaxPath = parsePaxPath(bytes.subarray(dataStart, dataEnd)) ?? pendingPaxPath;
+    } else if (typeflag === 0 || typeflag === 48 || typeflag === 55) {
+      const fileName = pendingPaxPath ?? pendingLongName ?? fullName;
+      pendingPaxPath = null;
+      pendingLongName = null;
+      files.set(normalizeNpmPath(fileName), bytes.subarray(dataStart, dataEnd));
+    } else {
+      pendingPaxPath = null;
+      pendingLongName = null;
+    }
+    if (files.size > MAX_FILES || dataEnd > MAX_BYTES) break;
+    offset = padded;
+  }
+  return files;
+}
 
 /** Walks a condition object ("import", "browser", "default"…) and returns the first matching leaf. */
 export function resolveConditions(value: unknown): string | null {
@@ -111,7 +188,7 @@ export function resolveExports(exportsField: unknown, subpath: string): string |
   return best ? resolveConditions(replaceStar(best.target, best.inner)) : null;
 }
 
-/** Probes the extracted files for an entry point: exact path, extension probing, directory index. */
+/** Probes the extracted files for an entry: exact path, extension probing, directory index. */
 export function probeNpmFile(files: Map<string, string>, base: string): string | null {
   const clean = normalizeNpmPath(base);
   const candidates = [
@@ -141,7 +218,7 @@ export function resolveEntrySubpath(pkg: NpmPackage, subpath: string): string | 
 
 const metaCache = new Map<string, Promise<NpmPackage | null>>();
 
-/** Fetches, verifies and extracts a package tarball, or null when it cannot be bundled. */
+/** Fetches, decompresses and extracts a package tarball, or null when it cannot be bundled. */
 export function loadNpmPackage(name: string, version: string): Promise<NpmPackage | null> {
   const key = `${name}@${version}`;
   let pending = metaCache.get(key);
@@ -164,25 +241,22 @@ async function extractPackage(name: string, version: string): Promise<NpmPackage
   };
   const tarballUrl = meta?.dist?.tarball;
   if (!tarballUrl) return null;
+  if (typeof DecompressionStream === 'undefined') return null;
   const tarballResponse = await cachedFetch(tarballUrl);
   if (!tarballResponse) return null;
   const blob = await tarballResponse.blob();
-  const reader = new ZipReader(new BlobReader(blob));
+  const stream = blob.stream().pipeThrough(new DecompressionStream('gzip'));
+  const buffer = await new Response(stream).arrayBuffer();
+  const extracted = parseTar(new Uint8Array(buffer));
   const files = new Map<string, string>();
   let total = 0;
-  try {
-    for (const entry of await reader.getEntries()) {
-      if (entry.directory || !entry.getData) continue;
-      const path = stripTarballRoot(entry.filename);
-      if (!TEXT_FILE.test(path)) continue;
-      if (/\.d\.(m?ts|cts)$/.test(path)) continue;
-      const text = await entry.getData(new TextWriter());
-      total += text.length;
-      if (files.size >= MAX_FILES || total > MAX_BYTES) break;
-      files.set(path, text);
-    }
-  } finally {
-    await reader.close().catch(() => undefined);
+  for (const [path, data] of extracted) {
+    const clean = stripTarballRoot(path);
+    if (!TEXT_FILE.test(clean)) continue;
+    if (/\.d\.(m?ts|cts)$/.test(clean)) continue;
+    total += data.byteLength;
+    if (files.size >= MAX_FILES || total > MAX_BYTES) break;
+    files.set(clean, decoder.decode(data));
   }
   if (files.size === 0) return null;
   return {

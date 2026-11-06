@@ -13,7 +13,15 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { resolveConditions, resolveEntrySubpath, resolveExports, probeNpmFile, normalizeNpmPath, type NpmPackage } from '../src/lib/npm';
+import {
+  parseTar,
+  resolveConditions,
+  resolveEntrySubpath,
+  resolveExports,
+  probeNpmFile,
+  normalizeNpmPath,
+  type NpmPackage,
+} from '../src/lib/npm';
 import { buildPreview } from '../src/lib/compiler';
 import { createPayload, previewDocument } from '../src/lib/runtime';
 import { blobSource, inlineBlobs } from '../src/lib/store';
@@ -62,7 +70,7 @@ const toBlobs = (project: DeckProject) => inlineBlobs(project.files.map((file) =
     module: undefined,
     main: undefined,
   };
-  // Self-contained tarball: the exports entry resolves, and internal RELATIVE imports bypass the
+  // Raw files, like Node loads them: the exports entry resolves, and internal RELATIVE imports
   // exports map entirely and land on the real file (pg-core/utils.js, not the arrays-only shim).
   assert.equal(resolveEntrySubpath(pkg, 'pg-core'), 'pg-core/index.js');
   assert.equal(resolveEntrySubpath(pkg, ''), 'index.js');
@@ -70,6 +78,80 @@ const toBlobs = (project: DeckProject) => inlineBlobs(project.files.map((file) =
   assert.equal(probeNpmFile(files, 'pg-core/query-builders/select'), 'pg-core/query-builders/select.js');
   assert.equal(probeNpmFile(files, 'pg-core/missing'), null);
   assert.equal(normalizeNpmPath('pg-core/../utils.js'), 'utils.js');
+  // Synthetic tar archive: ustar file, ustar prefix, GNU long name, PAX path override.
+  const encoder = new TextEncoder();
+  const tarEntry = (name: string, data: Uint8Array, options: { prefix?: string; typeflag?: number; paxPath?: string } = {}) => {
+    const blocks: Uint8Array[] = [];
+    const header = new Uint8Array(512);
+    const write = (text: string, offset: number, length: number) => {
+      const bytes = encoder.encode(text);
+      header.set(bytes.subarray(0, Math.min(bytes.length, length)), offset);
+    };
+    if (options.paxPath !== undefined) {
+      const record = `path=${options.paxPath}`;
+      // "<len> <key>=<value>\n" with len = digits + record length + space + newline
+      let length = record.length + 3;
+      const digits = String(length).length;
+      length = record.length + digits + 2;
+      const paxRecord = `${length} ${record}\n`;
+      const payload = encoder.encode(paxRecord);
+      const paxHeader = new Uint8Array(512);
+      write.call(null, '', 0, 0); // noop to satisfy types
+      const w = (text: string, buf: Uint8Array, offset: number, length: number) =>
+        buf.set(encoder.encode(text).subarray(0, length), offset);
+      w('pax-header', paxHeader, 0, 100);
+      w('0000644\0', paxHeader, 100, 8);
+      w('0000000\0', paxHeader, 108, 8);
+      w('0000000\0', paxHeader, 116, 8);
+      w(payload.length.toString(8).padStart(11, '0') + '\0', paxHeader, 124, 12);
+      w('00000000000\0', paxHeader, 136, 12);
+      w('        ', paxHeader, 148, 8);
+      paxHeader[156] = 120; // 'x'
+      w('ustar\0', paxHeader, 257, 6);
+      w('00', paxHeader, 263, 2);
+      blocks.push(paxHeader, payload);
+    }
+    const w = (text: string, offset: number, length: number) => header.set(encoder.encode(text).subarray(0, length), offset);
+    w(name, 0, 100);
+    w('0000644\0', 100, 8);
+    w('0000000\0', 108, 8);
+    w('0000000\0', 116, 8);
+    w(data.length.toString(8).padStart(11, '0') + '\0', 124, 12);
+    w('00000000000\0', 136, 12);
+    w('        ', 148, 8);
+    header[156] = options.typeflag ?? 48; // '0' regular file
+    w('ustar\0', 257, 6);
+    w('00', 263, 2);
+    if (options.prefix) w(options.prefix, 345, 155);
+    blocks.push(header, data);
+    // pad to a 512-byte boundary
+    const padding = (512 - (data.length % 512)) % 512;
+    if (padding) blocks.push(new Uint8Array(padding));
+    return blocks;
+  };
+  const tarBytes = (blocks: Uint8Array[]) => {
+    const total = blocks.reduce((sum, block) => sum + block.length, 0) + 1024;
+    const out = new Uint8Array(total);
+    let offset = 0;
+    for (const block of blocks) {
+      out.set(block, offset);
+      offset += block.length;
+    }
+    return out;
+  };
+  const concatAll = (list: Uint8Array[][]) => list.flat();
+  const decoderOf = (bytes: Uint8Array | undefined) => new TextDecoder().decode(bytes);
+  const sample = concatAll([
+    tarEntry('plain.js', encoder.encode('export const plain = 1;')),
+    tarEntry('short-name.js', encoder.encode('export const prefixed = 1;'), { prefix: 'some/deep/directory' }),
+    tarEntry('ignored-name.js', encoder.encode('export const pax = 1;'), { paxPath: 'pax/overridden.js' }),
+  ]);
+  const parsed = parseTar(tarBytes(sample));
+  assert.ok(parsed.has('plain.js'), 'ustar file missing from tar');
+  assert.equal(decoderOf(parsed.get('plain.js')), 'export const plain = 1;');
+  assert.ok(parsed.has('some/deep/directory/short-name.js'), 'ustar prefixed name missing from tar');
+  assert.ok(parsed.has('pax/overridden.js'), 'pax path override missing from tar');
+  console.log('parse-tar: ok');
   console.log('npm-resolution: ok');
 }
 
