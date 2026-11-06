@@ -50,7 +50,9 @@ android {
 spotless {
     kotlin {
         target("src/**/*.kt")
-        ktlint("1.3.0")
+        // Files intentionally group related declarations (e.g. generated icon data),
+        // so the filename/classname rule does not apply here.
+        ktlint("1.3.0").editorConfigOverride(mapOf("ktlint_standard_filename" to "disabled"))
     }
     kotlinGradle {
         target("*.gradle.kts")
