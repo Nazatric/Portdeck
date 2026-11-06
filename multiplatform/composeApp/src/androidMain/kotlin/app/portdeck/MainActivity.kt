@@ -314,6 +314,18 @@ class MainActivity : ComponentActivity() {
                     .build()
                 webViewClient = object : WebViewClient() {
                     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? = loader.shouldInterceptRequest(request.url)
+                    override fun onRenderProcessGone(view: WebView, detail: WebViewClient.RenderProcessGoneDetail): Boolean {
+                        // Never let a renderer death kill the app; the preview goes blank, so say so in the console.
+                        val reason = if (detail.didCrash()) "crashed" else "was killed (likely out of memory)"
+                        onLog("ERROR: The preview renderer $reason. Go back and reopen the project to restart it.")
+                        return true
+                    }
+                    override fun onReceivedError(view: WebView, request: WebResourceRequest, error: android.webkit.WebResourceError) {
+                        if (request.isForMainFrame) onLog("ERROR: Failed to load the preview page: ${error.description}.")
+                    }
+                    override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, errorResponse: WebResourceResponse) {
+                        if (request.isForMainFrame && (errorResponse?.statusCode ?: 200) >= 400) onLog("ERROR: The preview page returned HTTP ${errorResponse?.statusCode}.")
+                    }
                     override fun onPageFinished(view: WebView, url: String) {
                         view.evaluateJavascript("window.portdeckViewport(${viewport[0]},${viewport[1]});window.__pdPayload='';window.__pdStorage='';", null)
                         injectChunks(view, "__pdPayload", payload)
@@ -332,6 +344,15 @@ class MainActivity : ComponentActivity() {
                 }
                 webChromeClient = object : WebChromeClient() {
                     override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean = chooseUpload(callback, params)
+                    override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+                        // The preview engine reports through the bridge; relay raw page errors/warnings too, they are otherwise invisible.
+                        when (message.messageLevel()) {
+                            ConsoleMessage.MessageLevel.ERROR -> onLog("ERROR: ${message.message()}")
+                            ConsoleMessage.MessageLevel.WARNING -> onLog("WARN: ${message.message()}")
+                            else -> Unit
+                        }
+                        return true
+                    }
                 }
             }
         }
