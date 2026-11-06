@@ -365,6 +365,11 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
     try {
       const code = pkg.files.get(path);
       if (code === undefined) throw new Error(`${path} is missing from the tarball`);
+      if (path.endsWith('.cjs')) throw new Error('CommonJS files are served through the CDN shim');
+      if (path.endsWith('.js') && /(^|[^\w$])module\.exports\b/.test(code) && !/(^|[^\w$])(import|export)[ \n{*]/.test(code)) {
+        // A CommonJS .js file would crash when executed as an ES module; esm.sh wraps those correctly.
+        throw new Error('CommonJS .js file served through the CDN shim');
+      }
       if (path.endsWith('.json')) {
         try {
           JSON.parse(code);
