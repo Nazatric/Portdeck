@@ -6,10 +6,12 @@ import android.os.Build
 import android.os.Bundle
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
+import android.webkit.ConsoleMessage
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.WebViewClient.RenderProcessGoneDetail
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
@@ -314,7 +316,7 @@ class MainActivity : ComponentActivity() {
                     .build()
                 webViewClient = object : WebViewClient() {
                     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? = loader.shouldInterceptRequest(request.url)
-                    override fun onRenderProcessGone(view: WebView, detail: WebViewClient.RenderProcessGoneDetail): Boolean {
+                    override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
                         // Never let a renderer death kill the app; the preview goes blank, so say so in the console.
                         val reason = if (detail.didCrash()) "crashed" else "was killed (likely out of memory)"
                         onLog("ERROR: The preview renderer $reason. Go back and reopen the project to restart it.")
