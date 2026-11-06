@@ -8,7 +8,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
@@ -159,6 +160,7 @@ fun Logo(size: Dp = 22.dp, modifier: Modifier = Modifier) {
  * Shared press feedback: a fast spring down on touch, a softer overshoot on release, and a brief highlight.
  * Scaling happens in the graphics layer, so presses never trigger layout.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Pressable(
     modifier: Modifier = Modifier,
@@ -167,6 +169,7 @@ fun Pressable(
     border: Color? = null,
     enabled: Boolean = true,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -184,7 +187,7 @@ fun Pressable(
             .background(background)
             .then(if (border != null) Modifier.border(1.dp, border, shape) else Modifier)
             .background(Color.White.copy(alpha = highlight))
-            .clickable(interactionSource = interaction, indication = null, enabled = enabled, onClick = onClick),
+            .combinedClickable(interactionSource = interaction, indication = null, enabled = enabled, onClick = onClick, onLongClick = onLongClick),
         content = content,
     )
 }

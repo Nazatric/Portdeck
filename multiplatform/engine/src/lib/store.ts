@@ -13,10 +13,17 @@ const fileKey = (projectId: string, path: string) => `${projectId}\u0000${path}`
 let dbPromise: Promise<IDBDatabase> | null = null;
 
 function request<T>(req: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => { req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); });
+  return new Promise((resolve, reject) => {
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
 }
 function done(tx: IDBTransaction): Promise<void> {
-  return new Promise((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error ?? new Error('Storage transaction aborted')); });
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error ?? new Error('Storage transaction aborted'));
+  });
 }
 
 export function openDb(): Promise<IDBDatabase> {
@@ -35,11 +42,20 @@ export function openDb(): Promise<IDBDatabase> {
 
 /** Asks the browser not to evict PortDeck's storage under pressure. Harmless if refused. */
 export async function requestPersistence(): Promise<void> {
-  try { if (navigator.storage?.persist && !(await navigator.storage.persisted())) await navigator.storage.persist(); } catch { /* optional */ }
+  try {
+    if (navigator.storage?.persist && !(await navigator.storage.persisted())) await navigator.storage.persist();
+  } catch {
+    /* optional */
+  }
 }
 
 export async function storageEstimate(): Promise<{ usage: number; quota: number } | null> {
-  try { const estimate = await navigator.storage?.estimate(); return estimate ? { usage: estimate.usage ?? 0, quota: estimate.quota ?? 0 } : null; } catch { return null; }
+  try {
+    const estimate = await navigator.storage?.estimate();
+    return estimate ? { usage: estimate.usage ?? 0, quota: estimate.quota ?? 0 } : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Writes files in batches so huge projects never hold one enormous transaction open. */
@@ -117,8 +133,16 @@ export async function getProjectBlobs(projectId: string): Promise<Map<string, Bl
 export function blobSource(blobs: Map<string, Blob>): FileSource {
   return {
     has: (path) => blobs.has(path),
-    text: async (path) => { const blob = blobs.get(path); if (!blob) throw new Error(`File not found: ${path}`); return blob.text(); },
-    blob: async (path) => { const blob = blobs.get(path); if (!blob) throw new Error(`File not found: ${path}`); return blob; },
+    text: async (path) => {
+      const blob = blobs.get(path);
+      if (!blob) throw new Error(`File not found: ${path}`);
+      return blob.text();
+    },
+    blob: async (path) => {
+      const blob = blobs.get(path);
+      if (!blob) throw new Error(`File not found: ${path}`);
+      return blob;
+    },
   };
 }
 
@@ -133,12 +157,19 @@ async function migrateLegacy(): Promise<void> {
     if (typeof indexedDB.databases === 'function' && !(await indexedDB.databases()).some((db) => db.name === LEGACY_DB)) return;
     const legacy = await new Promise<IDBDatabase | null>((resolve) => {
       const open = indexedDB.open(LEGACY_DB);
-      open.onupgradeneeded = () => { open.transaction?.abort(); resolve(null); };
+      open.onupgradeneeded = () => {
+        open.transaction?.abort();
+        resolve(null);
+      };
       open.onsuccess = () => resolve(open.result);
       open.onerror = () => resolve(null);
     });
     if (!legacy) return;
-    if (!legacy.objectStoreNames.contains('projects')) { legacy.close(); indexedDB.deleteDatabase(LEGACY_DB); return; }
+    if (!legacy.objectStoreNames.contains('projects')) {
+      legacy.close();
+      indexedDB.deleteDatabase(LEGACY_DB);
+      return;
+    }
     type LegacyFile = { path: string; content: string; encoding: 'text' | 'base64'; size: number; mime?: string };
     type LegacyProject = Omit<DeckProject, 'files' | 'totalSize'> & { files: LegacyFile[] };
     const old = await request(legacy.transaction('projects', 'readonly').objectStore('projects').getAll() as IDBRequest<LegacyProject[]>);
@@ -148,7 +179,10 @@ async function migrateLegacy(): Promise<void> {
       const files: FileEntry[] = [];
       for (const file of project.files) {
         const type = file.mime || mimeFor(file.path);
-        const blob = file.encoding === 'base64' ? new Blob([Uint8Array.from(atob(file.content), (c) => c.charCodeAt(0))], { type }) : new Blob([file.content], { type });
+        const blob =
+          file.encoding === 'base64'
+            ? new Blob([Uint8Array.from(atob(file.content), (c) => c.charCodeAt(0))], { type })
+            : new Blob([file.content], { type });
         await writer.add(file.path, blob);
         files.push({ path: file.path, size: blob.size, type });
       }
@@ -156,5 +190,7 @@ async function migrateLegacy(): Promise<void> {
       await saveProject({ ...project, files, totalSize: files.reduce((sum, file) => sum + file.size, 0) });
     }
     indexedDB.deleteDatabase(LEGACY_DB);
-  } catch { /* Migration is best effort; a failure leaves the old database in place. */ }
+  } catch {
+    /* Migration is best effort; a failure leaves the old database in place. */
+  }
 }

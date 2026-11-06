@@ -43,28 +43,38 @@ export const assetToken = (key: string) => `pd-asset://${enc(key)}`;
 const moduleToken = (key: string) => `pd-module://${enc(key)}`;
 const styleToken = (key: string) => `pd-style://${enc(key)}`;
 const HEAD_MARK = '<!--PD_HEAD-->';
-const MISSING_ASSET = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDY0IDY0Ij48cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIGZpbGw9IiMyYjJiMmIiLz48cGF0aCBkPSJNMTIgNDRsMTItMTYgOSAxMSA2LTcgMTMgMTJ6IiBmaWxsPSIjNTY1NjU2Ii8+PC9zdmc+';
+const MISSING_ASSET =
+  'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDY0IDY0Ij48cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIGZpbGw9IiMyYjJiMmIiLz48cGF0aCBkPSJNMTIgNDRsMTItMTYgOSAxMSA2LTcgMTMgMTJ6IiBmaWxsPSIjNTY1NjU2Ii8+PC9zdmc+';
 const EXTENSIONS = ['.tsx', '.ts', '.jsx', '.js', '.mjs', '.cjs', '.json', '.css', '.svg'];
 const RESOURCE_TAGS = /^(img|source|video|audio|track|input|object|embed|image|use|iframe)$/i;
 /** Node built-ins that browser bundles still import, and where a maintained browser build lives. */
 const NODE_POLYFILLS: Record<string, string> = {
-  buffer: 'https://esm.sh/buffer@6.0.3?target=es2022', process: 'https://esm.sh/process@0.11.10?target=es2022',
-  events: 'https://esm.sh/events@3.3.0?target=es2022', util: 'https://esm.sh/@jspm/core@2.1.0/nodelibs/browser/util?target=es2022',
-  path: 'https://esm.sh/path-browserify@1.0.1?target=es2022', url: 'https://esm.sh/@jspm/core@2.1.0/nodelibs/browser/url?target=es2022',
-  querystring: 'https://esm.sh/querystring@1.0.2?target=es2022', stream: 'https://esm.sh/@jspm/core@2.1.0/nodelibs/browser/stream?target=es2022',
-  zlib: 'https://esm.sh/browserify-zlib@0.2.0?target=es2022', http: 'https://esm.sh/@jspm/core@2.1.0/nodelibs/browser/http?target=es2022',
-  https: 'https://esm.sh/@jspm/core@2.1.0/nodelibs/browser/http?target=es2022', os: 'https://esm.sh/@jspm/core@2.1.0/nodelibs/browser/os?target=es2022',
-  assert: 'https://esm.sh/@jspm/core@2.1.0/nodelibs/browser/assert?target=es2022', constants: 'https://esm.sh/@jspm/core@2.1.0/nodelibs/browser/constants?target=es2022',
+  buffer: 'https://esm.sh/buffer@6.0.3?target=es2022',
+  process: 'https://esm.sh/process@0.11.10?target=es2022',
+  events: 'https://esm.sh/events@3.3.0?target=es2022',
+  util: 'https://esm.sh/@jspm/core@2.1.0/nodelibs/browser/util?target=es2022',
+  path: 'https://esm.sh/path-browserify@1.0.1?target=es2022',
+  url: 'https://esm.sh/@jspm/core@2.1.0/nodelibs/browser/url?target=es2022',
+  querystring: 'https://esm.sh/querystring@1.0.2?target=es2022',
+  stream: 'https://esm.sh/@jspm/core@2.1.0/nodelibs/browser/stream?target=es2022',
+  zlib: 'https://esm.sh/browserify-zlib@0.2.0?target=es2022',
+  http: 'https://esm.sh/@jspm/core@2.1.0/nodelibs/browser/http?target=es2022',
+  https: 'https://esm.sh/@jspm/core@2.1.0/nodelibs/browser/http?target=es2022',
+  os: 'https://esm.sh/@jspm/core@2.1.0/nodelibs/browser/os?target=es2022',
+  assert: 'https://esm.sh/@jspm/core@2.1.0/nodelibs/browser/assert?target=es2022',
+  constants: 'https://esm.sh/@jspm/core@2.1.0/nodelibs/browser/constants?target=es2022',
 };
 const NODE_BUILTINS = new RegExp(`^(?:node:)?(?:${Object.keys(NODE_POLYFILLS).join('|')})$`);
 /** Node core modules with no usable browser build; reported instead of silently returning nothing. */
-const NODE_UNSUPPORTED = /^(?:node:)?(fs|child_process|crypto|net|tls|dns|worker_threads|cluster|vm|inspector|readline|perf_hooks|async_hooks|v8|module|http2|dgram|repl|tty|trace_events|string_decoder|sys|punycode|domain)(\/|$)/;
+const NODE_UNSUPPORTED =
+  /^(?:node:)?(fs|child_process|crypto|net|tls|dns|worker_threads|cluster|vm|inspector|readline|perf_hooks|async_hooks|v8|module|http2|dgram|repl|tty|trace_events|string_decoder|sys|punycode|domain)(\/|$)/;
 
 function normalize(path: string): string {
   const parts: string[] = [];
   for (const part of path.replace(/\\/g, '/').split('/')) {
     if (!part || part === '.') continue;
-    if (part === '..') parts.pop(); else parts.push(part);
+    if (part === '..') parts.pop();
+    else parts.push(part);
   }
   return parts.join('/');
 }
@@ -87,10 +97,28 @@ function stripJsonComments(text: string): string {
   let inString = false;
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
-    if (inString) { out += c; if (c === '\\') { out += text[++i] ?? ''; } else if (c === '"') inString = false; continue; }
-    if (c === '"') { inString = true; out += c; continue; }
-    if (c === '/' && text[i + 1] === '/') { while (i < text.length && text[i] !== '\n') i++; continue; }
-    if (c === '/' && text[i + 1] === '*') { i += 2; while (i < text.length && !(text[i] === '*' && text[i + 1] === '/')) i++; i++; continue; }
+    if (inString) {
+      out += c;
+      if (c === '\\') {
+        out += text[++i] ?? '';
+      } else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') {
+      inString = true;
+      out += c;
+      continue;
+    }
+    if (c === '/' && text[i + 1] === '/') {
+      while (i < text.length && text[i] !== '\n') i++;
+      continue;
+    }
+    if (c === '/' && text[i + 1] === '*') {
+      i += 2;
+      while (i < text.length && !(text[i] === '*' && text[i + 1] === '/')) i++;
+      i++;
+      continue;
+    }
     out += c;
   }
   return out.replace(/,(\s*[}\]])/g, '$1');
@@ -101,11 +129,20 @@ function globToRegex(glob: string): RegExp {
   for (let i = 0; i < glob.length; i++) {
     const c = glob[i];
     if (c === '*') {
-      if (glob[i + 1] === '*') { source += glob[i + 2] === '/' ? '(?:.*/)?' : '.*'; i += glob[i + 2] === '/' ? 2 : 1; }
-      else source += '[^/]*';
+      if (glob[i + 1] === '*') {
+        source += glob[i + 2] === '/' ? '(?:.*/)?' : '.*';
+        i += glob[i + 2] === '/' ? 2 : 1;
+      } else source += '[^/]*';
     } else if (c === '?') source += '[^/]';
-    else if (c === '{') { const end = glob.indexOf('}', i); source += `(?:${glob.slice(i + 1, end).split(',').map((part) => part.replace(/[.+^$()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*')).join('|')})`; i = end; }
-    else source += c.replace(/[.+^$()|[\]\\]/g, '\\$&');
+    else if (c === '{') {
+      const end = glob.indexOf('}', i);
+      source += `(?:${glob
+        .slice(i + 1, end)
+        .split(',')
+        .map((part) => part.replace(/[.+^$()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*'))
+        .join('|')})`;
+      i = end;
+    } else source += c.replace(/[.+^$()|[\]\\]/g, '\\$&');
   }
   return new RegExp(`^${source}$`);
 }
@@ -149,11 +186,22 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
   const net = createNetContext();
   const packages = new Map<string, boolean>();
   const tasks: Promise<unknown>[] = [];
-  const track = <T,>(task: Promise<T>) => { tasks.push(task); return task; };
-  const drain = async () => { for (let i = 0; i < tasks.length; i++) await tasks[i]; };
+  const track = <T>(task: Promise<T>) => {
+    tasks.push(task);
+    return task;
+  };
+  const drain = async () => {
+    for (let i = 0; i < tasks.length; i++) await tasks[i];
+  };
 
   let pkg: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> } = {};
-  if (paths.has('package.json')) { try { pkg = JSON.parse(await source.text('package.json')); } catch { warnings.add('package.json could not be parsed.'); } }
+  if (paths.has('package.json')) {
+    try {
+      pkg = JSON.parse(await source.text('package.json'));
+    } catch {
+      warnings.add('package.json could not be parsed.');
+    }
+  }
   const versions: Record<string, string> = { ...pkg.devDependencies, ...pkg.dependencies };
   const reactLine = pickReact(versions);
   const vendor = REACT_VENDORS[reactLine];
@@ -161,7 +209,8 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
   const vendorModules: Record<string, string> = { buffer: 'https://esm.sh/buffer@6.0.3?target=es2022' };
   let needsBuffer = false;
   const BUNDLE_POLYFILL = /(^|[\s/(])(Buffer|process|global)(\.|\s*[),;]|$)/;
-  if (majorOf(versions.react) && majorOf(versions.react) < 18) warnings.add(`React ${majorOf(versions.react)} is declared; the preview runs it on the bundled React ${vendor.version}.`);
+  if (majorOf(versions.react) && majorOf(versions.react) < 18)
+    warnings.add(`React ${majorOf(versions.react)} is declared; the preview runs it on the bundled React ${vendor.version}.`);
 
   // Path aliases from tsconfig/jsconfig, with the common "@/" and "~/" conventions as fallbacks.
   const aliases: { prefix: string; targets: string[] }[] = [];
@@ -172,9 +221,14 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
       const options = parsed.compilerOptions ?? {};
       const baseUrl = normalize(options.baseUrl ?? '.');
       for (const [pattern, targets] of Object.entries<string[]>(options.paths ?? {})) {
-        aliases.push({ prefix: pattern.replace(/\*$/, ''), targets: targets.map((target) => normalize(`${baseUrl}/${target}`).replace(/\*$/, '') + (target.endsWith('/*') ? '/' : '')) });
+        aliases.push({
+          prefix: pattern.replace(/\*$/, ''),
+          targets: targets.map((target) => normalize(`${baseUrl}/${target}`).replace(/\*$/, '') + (target.endsWith('/*') ? '/' : '')),
+        });
       }
-    } catch { /* ignore unreadable configs */ }
+    } catch {
+      /* ignore unreadable configs */
+    }
   }
   aliases.push({ prefix: '@/', targets: ['src/', ''] }, { prefix: '~/', targets: ['src/', ''] });
 
@@ -190,10 +244,14 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
       if (match) publicEnv[match[1]] = match[2].replace(/^['"]|['"]$/g, '');
     }
   }
-  const processEnv = JSON.stringify({ NODE_ENV: 'development', ...Object.fromEntries(Object.entries(publicEnv).filter(([key]) => !['DEV', 'PROD', 'MODE', 'BASE_URL', 'SSR'].includes(key))) });
+  const processEnv = JSON.stringify({
+    NODE_ENV: 'development',
+    ...Object.fromEntries(Object.entries(publicEnv).filter(([key]) => !['DEV', 'PROD', 'MODE', 'BASE_URL', 'SSR'].includes(key))),
+  });
 
   const aliasTargets = (spec: string): string[] | null => {
-    for (const alias of aliases) if (alias.prefix && spec.startsWith(alias.prefix)) return alias.targets.map((target) => target + spec.slice(alias.prefix.length));
+    for (const alias of aliases)
+      if (alias.prefix && spec.startsWith(alias.prefix)) return alias.targets.map((target) => target + spec.slice(alias.prefix.length));
     return null;
   };
   const withCandidates = (base: string) => {
@@ -205,15 +263,21 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
   /** Resolves a local reference (import specifier or HTML/CSS URL) to a project path. */
   const findFile = (spec: string, from: string, mode: 'module' | 'url'): string | undefined => {
     let path = spec.split(/[?#]/)[0];
-    try { path = decodeURI(path); } catch { /* keep raw */ }
+    try {
+      path = decodeURI(path);
+    } catch {
+      /* keep raw */
+    }
     let bases: string[];
     if (path.startsWith('/')) bases = [root + path.slice(1), path.slice(1), `public/${path.slice(1)}`];
     else if (path.startsWith('./') || path.startsWith('../')) bases = [dir(from) + path];
     else bases = [...(aliasTargets(path) ?? []), ...(mode === 'url' ? [dir(from) + path] : [])];
-    for (const base of bases) for (const candidate of (mode === 'url' ? [normalize(base)] : withCandidates(base))) if (paths.has(candidate)) return candidate;
+    for (const base of bases)
+      for (const candidate of mode === 'url' ? [normalize(base)] : withCandidates(base)) if (paths.has(candidate)) return candidate;
     return undefined;
   };
-  const isLocalSpec = (spec: string) => spec.startsWith('./') || spec.startsWith('../') || spec.startsWith('/') || aliasTargets(spec) !== null;
+  const isLocalSpec = (spec: string) =>
+    spec.startsWith('./') || spec.startsWith('../') || spec.startsWith('/') || aliasTargets(spec) !== null;
 
   const rewriteCss = async (css: string, from: string, seen: Set<string> = new Set()): Promise<string> => {
     const imports = [...css.matchAll(/@import\s+(?:url\()?\s*(['"])([^'"]+)\1\s*\)?([^;]*);/g)];
@@ -221,11 +285,15 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
       const spec = match[2];
       let replacement = '';
       if (spec === 'tailwindcss' || spec.startsWith('tailwindcss/')) replacement = '';
-      else if (isRemote(spec)) replacement = (await loadNetCss(spec.startsWith('//') ? `https:${spec}` : spec, net, assetToken)) ?? match[0];
+      else if (isRemote(spec))
+        replacement = (await loadNetCss(spec.startsWith('//') ? `https:${spec}` : spec, net, assetToken)) ?? match[0];
       else {
         const local = findFile(spec, from, 'url') ?? findFile(spec, from, 'module');
-        if (local && !seen.has(local)) { seen.add(local); replacement = await rewriteCss(await source.text(local), local, seen); }
-        else if (!local && !spec.startsWith('.') && !spec.startsWith('/')) replacement = (await loadNetCss(npmUrl(spec, 'css'), net, assetToken)) ?? '';
+        if (local && !seen.has(local)) {
+          seen.add(local);
+          replacement = await rewriteCss(await source.text(local), local, seen);
+        } else if (!local && !spec.startsWith('.') && !spec.startsWith('/'))
+          replacement = (await loadNetCss(npmUrl(spec, 'css'), net, assetToken)) ?? '';
         else if (!local) warnings.add(`Stylesheet not found: ${spec} (in ${from})`);
       }
       css = css.replace(match[0], replacement);
@@ -233,7 +301,10 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
     return css.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g, (match, _quote, value: string) => {
       if (hasScheme(value)) return match;
       const local = findFile(value, from, 'url');
-      if (!local) { warnings.add(`Asset not found: ${value} (in ${from})`); return match; }
+      if (!local) {
+        warnings.add(`Asset not found: ${value} (in ${from})`);
+        return match;
+      }
       const hash = value.includes('#') ? value.slice(value.indexOf('#')) : '';
       return `url("${assetToken(local)}${hash}")`;
     });
@@ -243,7 +314,14 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
     if (!styleOrder.includes(path)) styleOrder.push(path);
     if (!styles.has(path)) {
       styles.set(path, '');
-      track(source.text(path).then((css) => rewriteCss(css, path)).then((css) => { styles.set(path, css); }));
+      track(
+        source
+          .text(path)
+          .then((css) => rewriteCss(css, path))
+          .then((css) => {
+            styles.set(path, css);
+          }),
+      );
     }
     return path;
   };
@@ -258,19 +336,33 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
   };
 
   const loadPackage = (name: string, url: string) => {
-    track(loadNetModule(url, net).then((ok) => { packages.set(name, (packages.get(name) ?? true) && ok); }));
+    track(
+      loadNetModule(url, net).then((ok) => {
+        packages.set(name, (packages.get(name) ?? true) && ok);
+      }),
+    );
   };
 
   const ensureModule = (path: string): string => {
     const key = `@pd/${path}`;
-    if (!modules.has(key)) { modules.set(key, ''); track(compileCode(path, key)); }
+    if (!modules.has(key)) {
+      modules.set(key, '');
+      track(compileCode(path, key));
+    }
     return key;
   };
 
   const resolveLocal = (path: string, query: string): string => {
     if (/(^|&)raw(&|$)/.test(query)) {
       const key = `@pd/${path}?raw`;
-      if (!modules.has(key)) { modules.set(key, ''); track(source.text(path).then((text) => { modules.set(key, `export default ${JSON.stringify(text)};`); })); }
+      if (!modules.has(key)) {
+        modules.set(key, '');
+        track(
+          source.text(path).then((text) => {
+            modules.set(key, `export default ${JSON.stringify(text)};`);
+          }),
+        );
+      }
       return key;
     }
     if (/(^|&)(url|inline)(&|$)/.test(query) || (!CODE_FILE.test(path) && !STYLE_FILE.test(path) && !/\.json$/i.test(path))) {
@@ -283,11 +375,16 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
       const key = `@pd/${path}?style`;
       if (!modules.has(key)) {
         modules.set(key, 'export default {};');
-        if (/\.module\.css$/i.test(path)) track(source.text(path).then((css) => {
-          const names = Object.fromEntries([...css.matchAll(/\.(-?[_a-zA-Z]+[\w-]*)/g)].map((match) => [match[1], match[1]]));
-          const camel = Object.fromEntries(Object.keys(names).map((name) => [name.replace(/-([a-z])/g, (_m, c: string) => c.toUpperCase()), name]));
-          modules.set(key, `const s=${JSON.stringify({ ...camel, ...names })};export default s;`);
-        }));
+        if (/\.module\.css$/i.test(path))
+          track(
+            source.text(path).then((css) => {
+              const names = Object.fromEntries([...css.matchAll(/\.(-?[_a-zA-Z]+[\w-]*)/g)].map((match) => [match[1], match[1]]));
+              const camel = Object.fromEntries(
+                Object.keys(names).map((name) => [name.replace(/-([a-z])/g, (_m, c: string) => c.toUpperCase()), name]),
+              );
+              modules.set(key, `const s=${JSON.stringify({ ...camel, ...names })};export default s;`);
+            }),
+          );
       }
       return key;
     }
@@ -296,7 +393,11 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
 
   const resolveSpec = (spec: string, importer: string): string => {
     if (spec.startsWith('@pd/') || spec.startsWith('@portdeck/') || /^(data|blob):/.test(spec)) return spec;
-    if (isRemote(spec)) { const url = spec.startsWith('//') ? `https:${spec}` : spec; track(loadNetModule(url, net)); return url; }
+    if (isRemote(spec)) {
+      const url = spec.startsWith('//') ? `https:${spec}` : spec;
+      track(loadNetModule(url, net));
+      return url;
+    }
     const queryIndex = spec.indexOf('?');
     const bare = queryIndex >= 0 ? spec.slice(0, queryIndex) : spec;
     const query = queryIndex >= 0 ? spec.slice(queryIndex + 1) : '';
@@ -304,26 +405,60 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
       const path = findFile(bare, importer, 'module');
       if (path) return resolveLocal(path, query);
       if (bare.startsWith('.') || bare.startsWith('/')) {
-        if (ASSET_FILE.test(bare)) { warnings.add(`Asset not found: ${spec} (imported by ${importer}); showing a placeholder.`); return `data:text/javascript,export default ${encodeURIComponent(JSON.stringify(MISSING_ASSET))}`; }
+        if (ASSET_FILE.test(bare)) {
+          warnings.add(`Asset not found: ${spec} (imported by ${importer}); showing a placeholder.`);
+          return `data:text/javascript,export default ${encodeURIComponent(JSON.stringify(MISSING_ASSET))}`;
+        }
         throw new Error(`Cannot find "${spec}" imported by ${importer}`);
       }
     }
-    if (NEXT_SHIMS[bare]) { const key = `@pd/__next/${bare}`; modules.set(key, NEXT_SHIMS[bare]); return key; }
-    if (bare.startsWith('next/')) { warnings.add(`${bare} is not available in the preview; it was replaced with an empty module.`); const key = `@pd/__next/${bare}`; modules.set(key, 'export default {};'); return key; }
-    if (vendor.modules[bare]) { usesReact = true; return bare; }
-    if (/^(react|react-dom)(\/|$)/.test(bare)) { usesReact = true; warnings.add(`${bare} is not part of the bundled React runtime.`); }
+    if (NEXT_SHIMS[bare]) {
+      const key = `@pd/__next/${bare}`;
+      modules.set(key, NEXT_SHIMS[bare]);
+      return key;
+    }
+    if (bare.startsWith('next/')) {
+      warnings.add(`${bare} is not available in the preview; it was replaced with an empty module.`);
+      const key = `@pd/__next/${bare}`;
+      modules.set(key, 'export default {};');
+      return key;
+    }
+    if (vendor.modules[bare]) {
+      usesReact = true;
+      return bare;
+    }
+    if (/^(react|react-dom)(\/|$)/.test(bare)) {
+      usesReact = true;
+      warnings.add(`${bare} is not part of the bundled React runtime.`);
+    }
     if (/^node:/.test(bare)) return resolveSpec(bare.slice(5), importer);
     if (NODE_BUILTINS.test(bare)) {
       const polyfill = NODE_POLYFILLS[bare];
-      track(loadNetModule(polyfill, net).then((ok) => { packages.set(bare, ok); }));
+      track(
+        loadNetModule(polyfill, net).then((ok) => {
+          packages.set(bare, ok);
+        }),
+      );
       if (bare === 'buffer') needsBuffer = true;
       return polyfill;
     }
-    if (NODE_UNSUPPORTED.test(bare)) { warnings.add(`${bare} is a Node.js built-in with no browser equivalent, so it is empty in the preview.`); return 'data:text/javascript,export default {};'; }
+    if (NODE_UNSUPPORTED.test(bare)) {
+      warnings.add(`${bare} is a Node.js built-in with no browser equivalent, so it is empty in the preview.`);
+      return 'data:text/javascript,export default {};';
+    }
     const name = bare.startsWith('@') ? bare.split('/').slice(0, 2).join('/') : bare.split('/')[0];
     if (STYLE_FILE.test(bare)) {
       const key = netKey(npmUrl(bare, 'css'));
-      if (!styles.has(key)) { styles.set(key, ''); styleOrder.push(key); track(loadNetCss(npmUrl(bare, 'css'), net, assetToken).then((css) => { styles.set(key, css ?? `@import url("${npmUrl(bare, 'css')}");`); packages.set(name, (packages.get(name) ?? true) && css !== null); })); }
+      if (!styles.has(key)) {
+        styles.set(key, '');
+        styleOrder.push(key);
+        track(
+          loadNetCss(npmUrl(bare, 'css'), net, assetToken).then((css) => {
+            styles.set(key, css ?? `@import url("${npmUrl(bare, 'css')}");`);
+            packages.set(name, (packages.get(name) ?? true) && css !== null);
+          }),
+        );
+      }
       return 'data:text/javascript,export default {}';
     }
     const url = npmUrl(bare, 'module');
@@ -331,7 +466,10 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
     if (bare === 'react-router-dom' || bare === 'react-router') {
       // The preview document has no real URL path, so browser-history routers start in memory instead.
       const key = `@pd/__shim/${bare}`;
-      modules.set(key, `export * from ${JSON.stringify(url)};export { MemoryRouter as BrowserRouter, createMemoryRouter as createBrowserRouter } from ${JSON.stringify(url)};`);
+      modules.set(
+        key,
+        `export * from ${JSON.stringify(url)};export { MemoryRouter as BrowserRouter, createMemoryRouter as createBrowserRouter } from ${JSON.stringify(url)};`,
+      );
       return key;
     }
     return url;
@@ -340,40 +478,64 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
   const transformGlobs = (code: string, importer: string): { code: string; hoisted: string[] } => {
     const hoisted: string[] = [];
     let counter = 0;
-    const out = code.replace(/import\.meta\.glob(?:<[^>]*>)?\(\s*(\[[\s\S]*?\]|(['"`])[\s\S]*?\2)\s*(?:,\s*(\{[\s\S]*?\}))?\s*\)/g, (_match, arg: string, _q, opts = '') => {
-      const patterns = [...arg.matchAll(/(['"`])(.*?)\1/g)].map((match) => match[2]);
-      const eager = /eager\s*:\s*true/.test(opts);
-      const importName = opts.match(/import\s*:\s*['"]([\w*]+)['"]/)?.[1];
-      const query = opts.match(/query\s*:\s*['"]\??([^'"]+)['"]/)?.[1] ?? (opts.match(/as\s*:\s*['"](raw|url)['"]/)?.[1] ?? '');
-      const toPath = (pattern: string) => (pattern.startsWith('/') ? normalize(root + pattern.slice(1)) : pattern.startsWith('.') ? normalize(dir(importer) + pattern) : normalize((aliasTargets(pattern) ?? [pattern])[0]));
-      const include = patterns.filter((pattern) => !pattern.startsWith('!')).map((pattern) => globToRegex(toPath(pattern)));
-      const exclude = patterns.filter((pattern) => pattern.startsWith('!')).map((pattern) => globToRegex(toPath(pattern.slice(1))));
-      const matched = [...paths].filter((path) => include.some((re) => re.test(path)) && !exclude.some((re) => re.test(path)) && path !== importer).sort();
-      const keyFor = (path: string) => (patterns[0]?.startsWith('/') ? `/${path.slice(root.length)}` : patterns[0]?.startsWith('.') ? relativeFrom(dir(importer), path) : path);
-      const entries = matched.map((path) => {
-        const key = resolveLocal(path, query);
-        if (eager) {
-          const name = `__pdGlob${counter++}`;
-          hoisted.push(`import * as ${name} from ${JSON.stringify(key)};`);
-          return `${JSON.stringify(keyFor(path))}: ${importName ? `${name}[${JSON.stringify(importName)}]` : name}`;
-        }
-        return `${JSON.stringify(keyFor(path))}: () => import(${JSON.stringify(key)})${importName ? `.then((m) => m[${JSON.stringify(importName)}])` : ''}`;
-      });
-      return `({${entries.join(', ')}})`;
-    });
+    const out = code.replace(
+      /import\.meta\.glob(?:<[^>]*>)?\(\s*(\[[\s\S]*?\]|(['"`])[\s\S]*?\2)\s*(?:,\s*(\{[\s\S]*?\}))?\s*\)/g,
+      (_match, arg: string, _q, opts = '') => {
+        const patterns = [...arg.matchAll(/(['"`])(.*?)\1/g)].map((match) => match[2]);
+        const eager = /eager\s*:\s*true/.test(opts);
+        const importName = opts.match(/import\s*:\s*['"]([\w*]+)['"]/)?.[1];
+        const query = opts.match(/query\s*:\s*['"]\??([^'"]+)['"]/)?.[1] ?? opts.match(/as\s*:\s*['"](raw|url)['"]/)?.[1] ?? '';
+        const toPath = (pattern: string) =>
+          pattern.startsWith('/')
+            ? normalize(root + pattern.slice(1))
+            : pattern.startsWith('.')
+              ? normalize(dir(importer) + pattern)
+              : normalize((aliasTargets(pattern) ?? [pattern])[0]);
+        const include = patterns.filter((pattern) => !pattern.startsWith('!')).map((pattern) => globToRegex(toPath(pattern)));
+        const exclude = patterns.filter((pattern) => pattern.startsWith('!')).map((pattern) => globToRegex(toPath(pattern.slice(1))));
+        const matched = [...paths]
+          .filter((path) => include.some((re) => re.test(path)) && !exclude.some((re) => re.test(path)) && path !== importer)
+          .sort();
+        const keyFor = (path: string) =>
+          patterns[0]?.startsWith('/')
+            ? `/${path.slice(root.length)}`
+            : patterns[0]?.startsWith('.')
+              ? relativeFrom(dir(importer), path)
+              : path;
+        const entries = matched.map((path) => {
+          const key = resolveLocal(path, query);
+          if (eager) {
+            const name = `__pdGlob${counter++}`;
+            hoisted.push(`import * as ${name} from ${JSON.stringify(key)};`);
+            return `${JSON.stringify(keyFor(path))}: ${importName ? `${name}[${JSON.stringify(importName)}]` : name}`;
+          }
+          return `${JSON.stringify(keyFor(path))}: () => import(${JSON.stringify(key)})${importName ? `.then((m) => m[${JSON.stringify(importName)}])` : ''}`;
+        });
+        return `({${entries.join(', ')}})`;
+      },
+    );
     return { code: out, hoisted };
   };
 
   async function compileCode(path: string, key: string): Promise<void> {
     const text = await source.text(path);
     if (/\.json$/i.test(path)) {
-      try { JSON.parse(text); } catch { throw new Error(`Invalid JSON in ${path}`); }
+      try {
+        JSON.parse(text);
+      } catch {
+        throw new Error(`Invalid JSON in ${path}`);
+      }
       modules.set(key, `export default ${text};`);
       return;
     }
     let code = text;
     if (code.includes('import.meta.env')) code = code.replace(/import\.meta\.env\b/g, JSON.stringify(publicEnv));
-    if (code.includes('process.env')) code = code.replace(/process\.env\.([A-Za-z_$][\w$]*)/g, (_m, name: string) => name === 'NODE_ENV' ? '"development"' : JSON.stringify(publicEnv[name] ?? null)).replace(/process\.env\b/g, `(${processEnv})`);
+    if (code.includes('process.env'))
+      code = code
+        .replace(/process\.env\.([A-Za-z_$][\w$]*)/g, (_m, name: string) =>
+          name === 'NODE_ENV' ? '"development"' : JSON.stringify(publicEnv[name] ?? null),
+        )
+        .replace(/process\.env\b/g, `(${processEnv})`);
     if (code.includes('import.meta.url')) {
       code = code.replace(/new\s+URL\(\s*(['"`])([^'"`$]+)\1\s*,\s*import\.meta\.url\s*\)/g, (match, _q, spec: string) => {
         const target = findFile(spec, path, 'module');
@@ -385,18 +547,26 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
     if (code.includes('import.meta.glob')) ({ code, hoisted } = transformGlobs(code, path));
     if (hoisted.length) code = `${hoisted.join('\n')}\n${code}`;
     const ts = /\.(tsx?|mts|cts)$/i.test(path);
-    const jsx = /\.[jt]sx$/i.test(path) || (!ts && code.length < 800_000 && /<\/[A-Za-z][\w.-]*>|<[A-Za-z][\w.-]*(\s[^<>]*)?\/>|<>/.test(code));
+    const jsx =
+      /\.[jt]sx$/i.test(path) || (!ts && code.length < 800_000 && /<\/[A-Za-z][\w.-]*>|<[A-Za-z][\w.-]*(\s[^<>]*)?\/>|<>/.test(code));
     if (ts || jsx) {
       const presets: (string | [string, Record<string, unknown>])[] = [];
       if (jsx) presets.push(['react', { runtime: 'automatic' }]);
       if (ts) presets.push('typescript');
-      try { code = Babel.transform(code, { filename: path, presets, sourceType: 'module', compact: code.length > 400_000 })?.code ?? ''; }
-      catch (error) { throw new Error(`${path}: ${error instanceof Error ? error.message : String(error)}`); }
+      try {
+        code = Babel.transform(code, { filename: path, presets, sourceType: 'module', compact: code.length > 400_000 })?.code ?? '';
+      } catch (error) {
+        throw new Error(`${path}: ${error instanceof Error ? error.message : String(error)}`);
+      }
       if (jsx) usesReact = true;
     }
     let imports;
-    try { [imports] = parse(code); }
-    catch { modules.set(key, `${code}\n//# sourceURL=${path}`); return; }
+    try {
+      [imports] = parse(code);
+    } catch {
+      modules.set(key, `${code}\n//# sourceURL=${path}`);
+      return;
+    }
     const pieces: string[] = [];
     let cursor = 0;
     for (const item of imports) {
@@ -413,11 +583,18 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
         } else {
           const head = raw.match(/^(['"])((?:\.\.?\/|\/)[^'"]*)\1\s*\+/);
           const tail = raw.match(/\+\s*(['"])([^'"]*)\1\s*$/);
-          if (head) { prefix = head[2]; suffix = tail?.[2] ?? ''; }
+          if (head) {
+            prefix = head[2];
+            suffix = tail?.[2] ?? '';
+          }
         }
         if (prefix !== undefined && (prefix.startsWith('.') || prefix.startsWith('/'))) {
-          const base = prefix.startsWith('/') ? normalize(root + prefix.slice(1)) : normalize(dir(path) + prefix) + (prefix.endsWith('/') ? '/' : '');
-          for (const candidate of paths) if (candidate.startsWith(base) && candidate.endsWith(suffix) && (CODE_FILE.test(candidate) || /\.json$/i.test(candidate))) ensureModule(candidate);
+          const base = prefix.startsWith('/')
+            ? normalize(root + prefix.slice(1))
+            : normalize(dir(path) + prefix) + (prefix.endsWith('/') ? '/' : '');
+          for (const candidate of paths)
+            if (candidate.startsWith(base) && candidate.endsWith(suffix) && (CODE_FILE.test(candidate) || /\.json$/i.test(candidate)))
+              ensureModule(candidate);
         }
         pieces.push(code.slice(cursor, item.ss), `__pdImport.bind(null,${JSON.stringify(path)})`);
         cursor = item.ss + 6;
@@ -429,19 +606,32 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
       // Import attributes (with { type: 'json' }) would clash with the JS module we serve instead.
       if (item.a > -1 && item.d === -1) {
         const close = code.indexOf('}', item.a);
-        if (close > -1) { pieces.push(code.slice(cursor, item.a).replace(/\s*(with|assert)\s*$/, '')); cursor = close + 1; }
+        if (close > -1) {
+          pieces.push(code.slice(cursor, item.a).replace(/\s*(with|assert)\s*$/, ''));
+          cursor = close + 1;
+        }
       }
     }
     pieces.push(code.slice(cursor), `\n//# sourceURL=${path}`);
     modules.set(key, pieces.join(''));
   }
 
-  const resourceAttr = (tag: string, attr: string) => attr === 'href' ? /^(use|image)$/i.test(tag) : RESOURCE_TAGS.test(tag);
+  const resourceAttr = (tag: string, attr: string) => (attr === 'href' ? /^(use|image)$/i.test(tag) : RESOURCE_TAGS.test(tag));
   const rewriteUrlValue = (value: string, from: string, attr: string): string => {
-    if (attr === 'srcset') return value.split(',').map((candidate) => { const [url, ...rest] = candidate.trim().split(/\s+/); return [rewriteUrlValue(url, from, 'src'), ...rest].join(' '); }).join(', ');
+    if (attr === 'srcset')
+      return value
+        .split(',')
+        .map((candidate) => {
+          const [url, ...rest] = candidate.trim().split(/\s+/);
+          return [rewriteUrlValue(url, from, 'src'), ...rest].join(' ');
+        })
+        .join(', ');
     if (!value || hasScheme(value)) return value;
     const local = findFile(value, from, 'url');
-    if (!local) { warnings.add(`Asset not found: ${value} (in ${from})`); return value; }
+    if (!local) {
+      warnings.add(`Asset not found: ${value} (in ${from})`);
+      return value;
+    }
     return assetToken(local) + (value.includes('#') ? value.slice(value.indexOf('#')) : '');
   };
 
@@ -458,10 +648,18 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
         try {
           const map = JSON.parse(body) as { imports?: Record<string, string> };
           for (const [spec, target] of Object.entries(map.imports ?? {})) {
-            if (isRemote(target)) { const url = target.startsWith('//') ? `https:${target}` : target; track(loadNetModule(url, net)); userImports[spec] = url; }
-            else { const local = findFile(target, page, 'module'); if (local) userImports[spec] = ensureModule(local); }
+            if (isRemote(target)) {
+              const url = target.startsWith('//') ? `https:${target}` : target;
+              track(loadNetModule(url, net));
+              userImports[spec] = url;
+            } else {
+              const local = findFile(target, page, 'module');
+              if (local) userImports[spec] = ensureModule(local);
+            }
           }
-        } catch { warnings.add(`The import map in ${page} could not be parsed.`); }
+        } catch {
+          warnings.add(`The import map in ${page} could not be parsed.`);
+        }
         replacements.push(Promise.resolve([whole, '']));
         continue;
       }
@@ -472,50 +670,70 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
         const key = `@pd/${page}#inline-${inlineIndex++}`;
         modules.set(key, '');
         const virtualPath = `${dir(page)}__inline-${inlineIndex}.js`;
-        replacements.push((async () => {
-          await compileInline(body, key, virtualPath);
-          return [whole, `<script type="module"${rest} src="${moduleToken(key)}"></script>`] as [string, string];
-        })());
+        replacements.push(
+          (async () => {
+            await compileInline(body, key, virtualPath);
+            return [whole, `<script type="module"${rest} src="${moduleToken(key)}"></script>`] as [string, string];
+          })(),
+        );
         continue;
       }
-      if (src.includes('@vite/client')) { replacements.push(Promise.resolve([whole, ''])); continue; }
-      replacements.push((async (): Promise<[string, string]> => {
-        if (isRemote(src)) {
-          const url = src.startsWith('//') ? `https:${src}` : src;
-          if (isModule) return [whole, (await loadNetModule(url, net)) ? `<script type="module"${rest} src="${moduleToken(url)}"></script>` : whole];
-          const asset = await loadNetAsset(url, net);
-          return [whole, asset ? `<script${rest} src="${assetToken(asset)}"></script>` : whole];
-        }
-        const local = findFile(src, page, 'url') ?? findFile(src, page, 'module');
-        if (!local) { warnings.add(`Script not found: ${src} (in ${page})`); return [whole, '']; }
-        if (isModule || /\.(tsx?|jsx)$/i.test(local)) return [whole, `<script type="module"${rest} src="${moduleToken(ensureModule(local))}"></script>`];
-        return [whole, `<script${type && type !== 'text/javascript' ? ` type="${type}"` : ''}${rest} src="${assetToken(local)}"></script>`];
-      })());
+      if (src.includes('@vite/client')) {
+        replacements.push(Promise.resolve([whole, '']));
+        continue;
+      }
+      replacements.push(
+        (async (): Promise<[string, string]> => {
+          if (isRemote(src)) {
+            const url = src.startsWith('//') ? `https:${src}` : src;
+            if (isModule)
+              return [whole, (await loadNetModule(url, net)) ? `<script type="module"${rest} src="${moduleToken(url)}"></script>` : whole];
+            const asset = await loadNetAsset(url, net);
+            return [whole, asset ? `<script${rest} src="${assetToken(asset)}"></script>` : whole];
+          }
+          const local = findFile(src, page, 'url') ?? findFile(src, page, 'module');
+          if (!local) {
+            warnings.add(`Script not found: ${src} (in ${page})`);
+            return [whole, ''];
+          }
+          if (isModule || /\.(tsx?|jsx)$/i.test(local))
+            return [whole, `<script type="module"${rest} src="${moduleToken(ensureModule(local))}"></script>`];
+          return [
+            whole,
+            `<script${type && type !== 'text/javascript' ? ` type="${type}"` : ''}${rest} src="${assetToken(local)}"></script>`,
+          ];
+        })(),
+      );
     }
     for (const match of html.matchAll(/<link\b[^>]*>/gi)) {
       const tag = match[0];
       const href = tag.match(/\bhref\s*=\s*["']([^"']*)["']/i)?.[1];
       const rel = tag.match(/\brel\s*=\s*["']?([^"'>]+)/i)?.[1]?.toLowerCase() ?? '';
       if (!href) continue;
-      replacements.push((async (): Promise<[string, string]> => {
-        if (rel.includes('modulepreload') || (rel.includes('preload') && !isRemote(href))) return [tag, ''];
-        if (rel.includes('stylesheet')) {
-          if (isRemote(href)) {
-            const url = href.startsWith('//') ? `https:${href}` : href;
-            const css = await loadNetCss(url, net, assetToken);
-            if (css === null) return [tag, tag];
-            styles.set(netKey(url), css);
-            return [tag, tag.replace(href, styleToken(netKey(url)))];
+      replacements.push(
+        (async (): Promise<[string, string]> => {
+          if (rel.includes('modulepreload') || (rel.includes('preload') && !isRemote(href))) return [tag, ''];
+          if (rel.includes('stylesheet')) {
+            if (isRemote(href)) {
+              const url = href.startsWith('//') ? `https:${href}` : href;
+              const css = await loadNetCss(url, net, assetToken);
+              if (css === null) return [tag, tag];
+              styles.set(netKey(url), css);
+              return [tag, tag.replace(href, styleToken(netKey(url)))];
+            }
+            const local = findFile(href, page, 'url');
+            if (!local) {
+              warnings.add(`Stylesheet not found: ${href} (in ${page})`);
+              return [tag, ''];
+            }
+            styles.set(local, await rewriteCss(await source.text(local), local));
+            return [tag, tag.replace(href, styleToken(local))];
           }
+          if (isRemote(href) || hasScheme(href)) return [tag, tag];
           const local = findFile(href, page, 'url');
-          if (!local) { warnings.add(`Stylesheet not found: ${href} (in ${page})`); return [tag, '']; }
-          styles.set(local, await rewriteCss(await source.text(local), local));
-          return [tag, tag.replace(href, styleToken(local))];
-        }
-        if (isRemote(href) || hasScheme(href)) return [tag, tag];
-        const local = findFile(href, page, 'url');
-        return [tag, local ? tag.replace(href, assetToken(local)) : tag];
-      })());
+          return [tag, local ? tag.replace(href, assetToken(local)) : tag];
+        })(),
+      );
     }
     for (const match of html.matchAll(/<style\b([^>]*)>([\s\S]*?)<\/style\s*>/gi)) {
       replacements.push(rewriteCss(match[2], page).then((css) => [match[0], `<style${match[1]}>${css}</style>`] as [string, string]));
@@ -524,12 +742,18 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
     for (const [from, to] of resolved) html = html.replace(from, () => to);
     html = html.replace(/<([a-zA-Z][\w-]*)\b([^>]*)>/g, (tag, name: string, attrs: string) => {
       if (!/\s(src|srcset|poster|data|href|style)\s*=/.test(attrs)) return tag;
-      const next = attrs.replace(/\s(src|srcset|poster|data|href|style|xlink:href)\s*=\s*(["'])(.*?)\2/gi, (whole, attr: string, quote: string, value: string) => {
-        const lower = attr.toLowerCase();
-        if (lower === 'style') return value.includes('url(') ? ` ${attr}=${quote}${value.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g, (m, _q, url: string) => (hasScheme(url) || url.startsWith('pd-') ? m : `url(${rewriteUrlValue(url, page, 'src')})`))}${quote}` : whole;
-        if (value.startsWith('pd-') || !resourceAttr(name, lower === 'xlink:href' ? 'href' : lower)) return whole;
-        return ` ${attr}=${quote}${rewriteUrlValue(value, page, lower)}${quote}`;
-      });
+      const next = attrs.replace(
+        /\s(src|srcset|poster|data|href|style|xlink:href)\s*=\s*(["'])(.*?)\2/gi,
+        (whole, attr: string, quote: string, value: string) => {
+          const lower = attr.toLowerCase();
+          if (lower === 'style')
+            return value.includes('url(')
+              ? ` ${attr}=${quote}${value.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g, (m, _q, url: string) => (hasScheme(url) || url.startsWith('pd-') ? m : `url(${rewriteUrlValue(url, page, 'src')})`))}${quote}`
+              : whole;
+          if (value.startsWith('pd-') || !resourceAttr(name, lower === 'xlink:href' ? 'href' : lower)) return whole;
+          return ` ${attr}=${quote}${rewriteUrlValue(value, page, lower)}${quote}`;
+        },
+      );
       return `<${name}${next}>`;
     });
     if (/<head[^>]*>/i.test(html)) html = html.replace(/<head[^>]*>/i, (head) => `${head}${HEAD_MARK}`);
@@ -544,7 +768,12 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
     const reader: FileSource = { ...source, text: (path) => (path === virtualPath ? Promise.resolve(body) : original(path)) };
     const previous = source;
     source = reader;
-    try { await compileCode(virtualPath, key); } finally { source = previous; paths.delete(virtualPath); }
+    try {
+      await compileCode(virtualPath, key);
+    } finally {
+      source = previous;
+      paths.delete(virtualPath);
+    }
   }
 
   let html: string;
@@ -553,8 +782,12 @@ export async function buildPreview(project: DeckProject, source: FileSource, opt
     let bootstrap: string;
     if (project.framework === 'Next.js') {
       const appDir = dir(entry);
-      const layout = /(^|\/)app\/page\./.test(entry) ? ['tsx', 'jsx', 'js', 'ts'].map((ext) => `${appDir}layout.${ext}`).find((path) => paths.has(path)) : undefined;
-      const customApp = /(^|\/)pages\//.test(entry) ? ['tsx', 'jsx', 'js'].map((ext) => `${appDir}_app.${ext}`).find((path) => paths.has(path)) : undefined;
+      const layout = /(^|\/)app\/page\./.test(entry)
+        ? ['tsx', 'jsx', 'js', 'ts'].map((ext) => `${appDir}layout.${ext}`).find((path) => paths.has(path))
+        : undefined;
+      const customApp = /(^|\/)pages\//.test(entry)
+        ? ['tsx', 'jsx', 'js'].map((ext) => `${appDir}_app.${ext}`).find((path) => paths.has(path))
+        : undefined;
       userImports['react/jsx-runtime'] = '@pd/__next/jsx-runtime';
       userImports['react/jsx-dev-runtime'] = '@pd/__next/jsx-runtime';
       modules.set('@pd/__next/jsx-runtime', NEXT_JSX);
@@ -573,12 +806,21 @@ createRoot(document.getElementById('root')).render(tree);`;
   for (const [key, code] of net.modules) modules.set(key, code);
 
   const cssTexts = [...styles.values()].join('\n');
-  const tailwind = /@tailwind\b|@import\s+["']tailwindcss|@theme\b/.test(cssTexts) || [...paths].some((path) => /(^|\/)tailwind\.config\.[cm]?[jt]s$/.test(path));
-  if ([...paths].some((path) => /(^|\/)tailwind\.config\.[cm]?[jt]s$/.test(path))) warnings.add('tailwind.config is not executed in the preview; theme extensions and plugins are skipped.');
-  const head = styleOrder.map((key) => (tailwind && !key.startsWith('@net/')
-    ? `<style type="text/tailwindcss">${(styles.get(key) ?? '').replace(/<\/style/gi, '<\\/style')}</style>`
-    : `<link rel="stylesheet" href="${styleToken(key)}">`)).join('');
-  html = html.replace(HEAD_MARK, `${HEAD_MARK}${tailwind ? `<script src="${assetToken('@vendor/tailwind')}"></script>` : ''}`).replace(/<\/head>/i, `${head}</head>`);
+  const tailwind =
+    /@tailwind\b|@import\s+["']tailwindcss|@theme\b/.test(cssTexts) ||
+    [...paths].some((path) => /(^|\/)tailwind\.config\.[cm]?[jt]s$/.test(path));
+  if ([...paths].some((path) => /(^|\/)tailwind\.config\.[cm]?[jt]s$/.test(path)))
+    warnings.add('tailwind.config is not executed in the preview; theme extensions and plugins are skipped.');
+  const head = styleOrder
+    .map((key) =>
+      tailwind && !key.startsWith('@net/')
+        ? `<style type="text/tailwindcss">${(styles.get(key) ?? '').replace(/<\/style/gi, '<\\/style')}</style>`
+        : `<link rel="stylesheet" href="${styleToken(key)}">`,
+    )
+    .join('');
+  html = html
+    .replace(HEAD_MARK, `${HEAD_MARK}${tailwind ? `<script src="${assetToken('@vendor/tailwind')}"></script>` : ''}`)
+    .replace(/<\/head>/i, `${head}</head>`);
   if (!html.includes(HEAD_MARK)) html = html.replace(/<head[^>]*>/i, (tag) => `${tag}${HEAD_MARK}`);
 
   const offline: string[] = [];
@@ -587,7 +829,10 @@ createRoot(document.getElementById('root')).render(tree);`;
   if (tailwind) offline.push('Tailwind CSS');
   for (const [name, ok] of packages) (ok ? offline : network).push(name);
   for (const host of net.missing) if (!network.some((item) => item === host)) network.push(host);
-  if (network.length) warnings.add(`${network.join(', ')} could not be saved for offline use${typeof navigator !== 'undefined' && !navigator.onLine ? ' while offline' : ''}; ${network.length === 1 ? 'it loads' : 'they load'} from the network.`);
+  if (network.length)
+    warnings.add(
+      `${network.join(', ')} could not be saved for offline use${typeof navigator !== 'undefined' && !navigator.onLine ? ' while offline' : ''}; ${network.length === 1 ? 'it loads' : 'they load'} from the network.`,
+    );
 
   return {
     html,

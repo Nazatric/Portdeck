@@ -101,8 +101,6 @@ class ProjectReader(private val context: Context) {
         val target = File(root, id)
         check(source.renameTo(target)) { "Could not save the imported project." }
         staging.deleteRecursively()
-        // Keep storage tidy: only the most recent import is kept on disk.
-        root.listFiles()?.filter { it.name != id }?.forEach { it.deleteRecursively() }
         val (framework, entry) = detect(target, files.map { it.path }.toSet())
         return DeckProject(id, name, framework, entry, files, files.sumOf { it.size }, System.currentTimeMillis())
     }

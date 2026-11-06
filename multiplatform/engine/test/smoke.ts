@@ -22,8 +22,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..', '..', 'composeApp', 'src');
 const demos: DeckProject[] = JSON.parse(readFileSync(join(root, 'androidMain', 'assets', 'demos.json'), 'utf8'));
 
-const toBlobs = (project: DeckProject) =>
-  inlineBlobs(project.files.map((file) => ({ path: file.path, content: file.content ?? '' })));
+const toBlobs = (project: DeckProject) => inlineBlobs(project.files.map((file) => ({ path: file.path, content: file.content ?? '' })));
 
 /* ---------------------------------- fake DOM ---------------------------------- */
 
@@ -43,22 +42,34 @@ function makeHarness(): Harness {
 
   const documentStub: Record<string, unknown> = {
     cookie: '',
-    open() { html = ''; },
-    write(chunk: string) { html += chunk; },
-    close() { /* no-op */ },
+    open() {
+      html = '';
+    },
+    write(chunk: string) {
+      html += chunk;
+    },
+    close() {
+      /* no-op */
+    },
     addEventListener(type: string, fn: () => void) {
       const list = docListeners.get(type) ?? [];
       list.push(fn);
       docListeners.set(type, list);
     },
     removeEventListener() {},
-    createElement() { return { style: {}, setAttribute() {}, appendChild() {} }; },
+    createElement() {
+      return { style: {}, setAttribute() {}, appendChild() {} };
+    },
     body: { appendChild() {} },
-    getElementById() { return null; },
+    getElementById() {
+      return null;
+    },
   };
 
   const parentRef = {
-    postMessage(message: Record<string, unknown>) { messages.push(message); },
+    postMessage(message: Record<string, unknown>) {
+      messages.push(message);
+    },
   };
 
   const elementProto: Record<string, unknown> = {
@@ -73,8 +84,13 @@ function makeHarness(): Harness {
     history: { pushState() {}, replaceState() {}, back() {}, forward() {} },
     fetch: () => Promise.reject(new Error('network is disabled in the smoke test')),
     XMLHttpRequest: class {},
-    Element: function Element() { /* opaque-origin element stub */ },
-    MutationObserver: class { observe() {} disconnect() {} },
+    Element: function Element() {
+      /* opaque-origin element stub */
+    },
+    MutationObserver: class {
+      observe() {}
+      disconnect() {}
+    },
     Audio: class {},
     Worker: undefined,
     SharedWorker: undefined,
@@ -104,7 +120,9 @@ function makeHarness(): Harness {
       const index = list.indexOf(fn);
       if (index !== -1) list.splice(index, 1);
     },
-    open() { return null; },
+    open() {
+      return null;
+    },
   };
   windowStub.window = windowStub;
   windowStub.self = windowStub;
@@ -116,7 +134,9 @@ function makeHarness(): Harness {
     window: windowStub,
     messages,
     writtenHtml: () => html,
-    fireDomContentLoaded: () => { for (const fn of docListeners.get('DOMContentLoaded') ?? []) fn(); },
+    fireDomContentLoaded: () => {
+      for (const fn of docListeners.get('DOMContentLoaded') ?? []) fn();
+    },
     dispatchMessage: (data) => {
       for (const fn of [...(windowListeners.get('message') ?? [])]) fn({ data, source: parentRef });
     },
@@ -162,9 +182,9 @@ for (const demo of demos) {
   assert.ok(!written.includes('pd-asset://'), 'unresolved pd-asset token in written html');
   assert.ok(written.includes('<script type="importmap">'), 'written html is missing the import map');
 
-  const importMap = JSON.parse(
-    written.match(/<script type="importmap">(.*?)<\/script>/s)?.[1] ?? '{}',
-  ) as { imports: Record<string, string> };
+  const importMap = JSON.parse(written.match(/<script type="importmap">(.*?)<\/script>/s)?.[1] ?? '{}') as {
+    imports: Record<string, string>;
+  };
   assert.ok(importMap.imports['@portdeck/react'], 'import map is missing the React bundle entry');
   for (const key of Object.keys(payload.modules)) {
     assert.ok(importMap.imports[key], `import map is missing module ${key}`);
@@ -174,7 +194,10 @@ for (const demo of demos) {
   console.log(`written html ok (${written.length} bytes, ${Object.keys(importMap.imports).length} import-map entries)`);
 
   frame.fireDomContentLoaded();
-  assert.ok(frame.messages.some((msg) => msg.type === 'ready'), 'frame did not report ready on DOMContentLoaded');
+  assert.ok(
+    frame.messages.some((msg) => msg.type === 'ready'),
+    'frame did not report ready on DOMContentLoaded',
+  );
   console.log('ready ok');
 }
 
@@ -184,44 +207,114 @@ console.log('\nAll smoke tests passed.');
 
 const synthetic: DeckProject[] = [
   {
-    id: 'test-tsx', name: 'TSX App', framework: 'React', entry: 'src/main.tsx',
+    id: 'test-tsx',
+    name: 'TSX App',
+    framework: 'React',
+    entry: 'src/main.tsx',
     files: [
-      { path: 'package.json', size: 40, type: 'application/json', content: JSON.stringify({ dependencies: { react: '18.3.1', 'react-dom': '18.3.1' } }) },
-      { path: 'src/main.tsx', size: 120, type: 'text/javascript', content: 'import React from \'react\';\nimport { createRoot } from \'react-dom/client\';\nimport App from \'./App\';\ncreateRoot(document.getElementById(\'root\')!).render(<App />);' },
-      { path: 'src/App.tsx', size: 400, type: 'text/javascript', content: 'import React from \'react\';\nimport styles from \'./app.module.css\';\nimport logo from \'./logo.svg\';\nexport default function App() { return <main className={styles.wrap}><img src={logo} alt="logo" /><h1>Hello</h1></main> }' },
+      {
+        path: 'package.json',
+        size: 40,
+        type: 'application/json',
+        content: JSON.stringify({ dependencies: { react: '18.3.1', 'react-dom': '18.3.1' } }),
+      },
+      {
+        path: 'src/main.tsx',
+        size: 120,
+        type: 'text/javascript',
+        content:
+          "import React from 'react';\nimport { createRoot } from 'react-dom/client';\nimport App from './App';\ncreateRoot(document.getElementById('root')!).render(<App />);",
+      },
+      {
+        path: 'src/App.tsx',
+        size: 400,
+        type: 'text/javascript',
+        content:
+          "import React from 'react';\nimport styles from './app.module.css';\nimport logo from './logo.svg';\nexport default function App() { return <main className={styles.wrap}><img src={logo} alt=\"logo\" /><h1>Hello</h1></main> }",
+      },
       { path: 'src/app.module.css', size: 40, type: 'text/css', content: '.wrap { color: rebeccapurple; }' },
-      { path: 'src/logo.svg', size: 100, type: 'image/svg+xml', content: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="5"/></svg>' },
+      {
+        path: 'src/logo.svg',
+        size: 100,
+        type: 'image/svg+xml',
+        content: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="5"/></svg>',
+      },
     ],
-    size: 700, updatedAt: 0,
+    size: 700,
+    updatedAt: 0,
   } as unknown as DeckProject,
   {
-    id: 'test-dynamic', name: 'Dynamic Imports', framework: 'JavaScript', entry: 'src/main.js',
+    id: 'test-dynamic',
+    name: 'Dynamic Imports',
+    framework: 'JavaScript',
+    entry: 'src/main.js',
     files: [
-      { path: 'src/main.js', size: 200, type: 'text/javascript', content: 'const name = \'a\';\nimport(\'./pages/\' + name + \'.js\').then((m) => console.log(\'loaded\', m.default));' },
-      { path: 'src/pages/a.js', size: 30, type: 'text/javascript', content: 'export default \'a\';' },
-      { path: 'src/pages/b.js', size: 30, type: 'text/javascript', content: 'export default \'b\';' },
+      {
+        path: 'src/main.js',
+        size: 200,
+        type: 'text/javascript',
+        content: "const name = 'a';\nimport('./pages/' + name + '.js').then((m) => console.log('loaded', m.default));",
+      },
+      { path: 'src/pages/a.js', size: 30, type: 'text/javascript', content: "export default 'a';" },
+      { path: 'src/pages/b.js', size: 30, type: 'text/javascript', content: "export default 'b';" },
     ],
-    size: 260, updatedAt: 0,
+    size: 260,
+    updatedAt: 0,
   } as unknown as DeckProject,
   {
-    id: 'test-next', name: 'Next Layout', framework: 'Next.js', entry: 'app/page.jsx',
+    id: 'test-next',
+    name: 'Next Layout',
+    framework: 'Next.js',
+    entry: 'app/page.jsx',
     files: [
-      { path: 'package.json', size: 60, type: 'application/json', content: JSON.stringify({ dependencies: { next: '14.2.0', react: '18.3.1', 'react-dom': '18.3.1' } }) },
-      { path: 'app/layout.tsx', size: 120, type: 'text/javascript', content: 'export default function Layout({ children }: { children: React.ReactNode }) { return <section className="layout">{children}</section> }' },
-      { path: 'app/page.jsx', size: 200, type: 'text/javascript', content: 'import React from \'react\';\nimport \'./style.css\';\nexport default function Page() { return <h1>Next page</h1> }' },
+      {
+        path: 'package.json',
+        size: 60,
+        type: 'application/json',
+        content: JSON.stringify({ dependencies: { next: '14.2.0', react: '18.3.1', 'react-dom': '18.3.1' } }),
+      },
+      {
+        path: 'app/layout.tsx',
+        size: 120,
+        type: 'text/javascript',
+        content:
+          'export default function Layout({ children }: { children: React.ReactNode }) { return <section className="layout">{children}</section> }',
+      },
+      {
+        path: 'app/page.jsx',
+        size: 200,
+        type: 'text/javascript',
+        content: "import React from 'react';\nimport './style.css';\nexport default function Page() { return <h1>Next page</h1> }",
+      },
       { path: 'app/style.css', size: 30, type: 'text/css', content: 'h1 { color: teal; }' },
     ],
-    size: 410, updatedAt: 0,
+    size: 410,
+    updatedAt: 0,
   } as unknown as DeckProject,
   {
-    id: 'test-html-assets', name: 'HTML Assets', framework: 'HTML', entry: 'index.html',
+    id: 'test-html-assets',
+    name: 'HTML Assets',
+    framework: 'HTML',
+    entry: 'index.html',
     files: [
-      { path: 'index.html', size: 200, type: 'text/html', content: '<!doctype html><html><head><link rel="stylesheet" href="./style.css"></head><body><img src="./logo.png" alt="l"><script src="./app.js"></script></body></html>' },
+      {
+        path: 'index.html',
+        size: 200,
+        type: 'text/html',
+        content:
+          '<!doctype html><html><head><link rel="stylesheet" href="./style.css"></head><body><img src="./logo.png" alt="l"><script src="./app.js"></script></body></html>',
+      },
       { path: 'style.css', size: 20, type: 'text/css', content: 'body { background: white; }' },
-      { path: 'logo.png', size: 16, type: 'image/png', content: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' },
-      { path: 'app.js', size: 10, type: 'text/javascript', content: 'console.log(\'hi\');' },
+      {
+        path: 'logo.png',
+        size: 16,
+        type: 'image/png',
+        content: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      },
+      { path: 'app.js', size: 10, type: 'text/javascript', content: "console.log('hi');" },
     ],
-    size: 250, updatedAt: 0,
+    size: 250,
+    updatedAt: 0,
   } as unknown as DeckProject,
 ];
 

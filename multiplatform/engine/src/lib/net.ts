@@ -26,11 +26,17 @@ export function createNetContext(): NetContext {
 
 let cachePromise: Promise<Cache | null> | null = null;
 function openCache(): Promise<Cache | null> {
-  cachePromise ??= (typeof caches === 'undefined' ? Promise.resolve(null) : caches.open(CACHE_NAME).catch(() => null));
+  cachePromise ??= typeof caches === 'undefined' ? Promise.resolve(null) : caches.open(CACHE_NAME).catch(() => null);
   return cachePromise;
 }
 
-const host = (url: string) => { try { return new URL(url).host; } catch { return url; } };
+const host = (url: string) => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+};
 export const netKey = (url: string) => `@net/${url}`;
 
 /** Cache first, network second. Returns null when neither has it (offline and never seen, or no CORS). */
@@ -43,7 +49,9 @@ export async function cachedFetch(url: string): Promise<Response | null> {
     if (!response.ok) return null;
     if (cache) await cache.put(url, response.clone()).catch(() => undefined);
     return response;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /** Loads a remote ES module and everything it imports. Returns false if it could not be stored. */
@@ -54,12 +62,20 @@ export function loadNetModule(url: string, ctx: NetContext): Promise<boolean> {
   const task = (async () => {
     if (ctx.modules.size >= MAX_MODULES) return false;
     const response = await cachedFetch(url);
-    if (!response) { ctx.missing.add(host(url)); return false; }
+    if (!response) {
+      ctx.missing.add(host(url));
+      return false;
+    }
     const base = response.url || url;
     const code = await response.text();
     await init();
     let imports;
-    try { [imports] = parse(code); } catch { ctx.modules.set(url, code); return true; }
+    try {
+      [imports] = parse(code);
+    } catch {
+      ctx.modules.set(url, code);
+      return true;
+    }
     const children: Promise<boolean>[] = [];
     const pieces: string[] = [];
     let cursor = 0;
@@ -68,7 +84,11 @@ export function loadNetModule(url: string, ctx: NetContext): Promise<boolean> {
       const spec = item.n;
       if (REACT_BARE.test(spec)) continue;
       let absolute: string;
-      try { absolute = new URL(spec, base).href; } catch { continue; }
+      try {
+        absolute = new URL(spec, base).href;
+      } catch {
+        continue;
+      }
       if (!/^https?:/.test(absolute)) continue;
       pieces.push(code.slice(cursor, item.s), item.d > -1 ? JSON.stringify(absolute) : absolute);
       cursor = item.e;
@@ -89,7 +109,10 @@ export async function loadNetAsset(url: string, ctx: NetContext): Promise<string
   const key = netKey(url);
   if (ctx.assets.has(key)) return key;
   const response = await cachedFetch(url);
-  if (!response) { ctx.missing.add(host(url)); return null; }
+  if (!response) {
+    ctx.missing.add(host(url));
+    return null;
+  }
   ctx.assets.set(key, await response.blob());
   ctx.stored.add(host(url));
   return key;
@@ -98,7 +121,10 @@ export async function loadNetAsset(url: string, ctx: NetContext): Promise<string
 /** Loads a remote stylesheet, inlining its @imports and storing every font and image it references. */
 export async function loadNetCss(url: string, ctx: NetContext, token: (key: string) => string, depth = 0): Promise<string | null> {
   const response = await cachedFetch(url);
-  if (!response) { ctx.missing.add(host(url)); return null; }
+  if (!response) {
+    ctx.missing.add(host(url));
+    return null;
+  }
   const base = response.url || url;
   let css = await response.text();
   ctx.stored.add(host(url));
@@ -106,17 +132,29 @@ export async function loadNetCss(url: string, ctx: NetContext, token: (key: stri
   for (const match of imports) {
     if (depth > 4) break;
     let absolute: string;
-    try { absolute = new URL(match[1], base).href; } catch { continue; }
+    try {
+      absolute = new URL(match[1], base).href;
+    } catch {
+      continue;
+    }
     const inner = await loadNetCss(absolute, ctx, token, depth + 1);
     css = css.replace(match[0], inner ?? `@import url("${absolute}");`);
   }
-  const urls = [...new Set([...css.matchAll(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g)].map((match) => match[2]).filter((value) => !/^(data:|#)/.test(value)))];
-  const resolved = await Promise.all(urls.map(async (value) => {
-    let absolute: string;
-    try { absolute = new URL(value, base).href; } catch { return [value, null] as const; }
-    const key = await loadNetAsset(absolute, ctx);
-    return [value, key ? token(key) : absolute] as const;
-  }));
+  const urls = [
+    ...new Set([...css.matchAll(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g)].map((match) => match[2]).filter((value) => !/^(data:|#)/.test(value))),
+  ];
+  const resolved = await Promise.all(
+    urls.map(async (value) => {
+      let absolute: string;
+      try {
+        absolute = new URL(value, base).href;
+      } catch {
+        return [value, null] as const;
+      }
+      const key = await loadNetAsset(absolute, ctx);
+      return [value, key ? token(key) : absolute] as const;
+    }),
+  );
   for (const [value, replacement] of resolved) if (replacement) css = css.split(value).join(replacement);
   return css;
 }

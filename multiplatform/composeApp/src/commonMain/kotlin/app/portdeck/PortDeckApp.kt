@@ -59,7 +59,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -97,12 +99,13 @@ private val demos = listOf(
 @Composable
 fun PortDeckApp(
     project: DeckProject?,
-    recent: DeckProject?,
+    projects: List<DeckProject>,
     error: String,
     logs: List<String>,
     onPick: (String) -> Unit,
     onDemo: (String) -> Unit,
-    onOpenRecent: () -> Unit,
+    onOpenProject: (DeckProject) -> Unit,
+    onDeleteProject: (DeckProject) -> Unit,
     onBack: () -> Unit,
     onReload: () -> Unit,
     onImmersive: (Boolean) -> Unit = {},
@@ -110,7 +113,7 @@ fun PortDeckApp(
     preview: @Composable (DeckProject, Int, Int, Boolean) -> Unit,
 ) {
     var dialog by remember { mutableStateOf("") }
-    var tab by remember { mutableStateOf(if (recent == null) "demos" else "projects") }
+    var tab by remember { mutableStateOf(if (projects.isEmpty()) "demos" else "projects") }
     Box(Modifier.fillMaxSize()) {
         AmbientBackground()
         ShardBackdrop(active = project == null)
@@ -122,7 +125,7 @@ fun PortDeckApp(
                 label = "screen",
             ) { current ->
                 if (current == null) {
-                    Library(recent, tab, { tab = it }, { dialog = "import" }, { dialog = "help" }, onDemo, onOpenRecent, this@SharedTransitionLayout, this@AnimatedContent)
+                    Library(projects, tab, { tab = it }, { dialog = "import" }, { dialog = "help" }, onDemo, onOpenProject, onDeleteProject, this@SharedTransitionLayout, this@AnimatedContent)
                 } else {
                     ProjectScreen(current, logs, { tab = if (current.demo) "demos" else "projects"; onBack() }, onReload, onImmersive, readSource, preview, this@SharedTransitionLayout, this@AnimatedContent)
                 }
@@ -238,7 +241,7 @@ private fun ImportDialog(onClose: () -> Unit, onPick: (String) -> Unit) {
 private fun HelpDialog(onClose: () -> Unit) {
     val rows = listOf(
         Triple(DeckIcons.FolderInput, "Import", "Choose a folder, ZIP, or files. Projects stay on this device."),
-        Triple(DeckIcons.MonitorSmartphone, "Preview", "Switch between fit, phone, and tablet, and turn phone or tablet between portrait and landscape. Console, files, and details open from the bottom bar."),
+        Triple(DeckIcons.MonitorSmartphone, "Preview", "Switch between fill, phone, and tablet, and turn phone or tablet between portrait and landscape. Console, files, and details open from the bottom bar."),
         Triple(DeckIcons.WifiOff, "Online and offline", "Projects of any size are stored on this device. React and Tailwind CSS are bundled; npm packages, CDN scripts, and fonts are saved the first time a project runs online."),
     )
     AppDialog("Guide", DeckIcons.CircleQuestionMark, onClose) {
@@ -259,9 +262,11 @@ private fun HelpDialog(onClose: () -> Unit) {
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun Library(
-    recent: DeckProject?, tab: String, onTab: (String) -> Unit, onImport: () -> Unit, onHelp: () -> Unit,
-    onDemo: (String) -> Unit, onOpenRecent: () -> Unit, shared: SharedTransitionScope, visibility: AnimatedVisibilityScope,
+    projects: List<DeckProject>, tab: String, onTab: (String) -> Unit, onImport: () -> Unit, onHelp: () -> Unit,
+    onDemo: (String) -> Unit, onOpenProject: (DeckProject) -> Unit, onDeleteProject: (DeckProject) -> Unit, shared: SharedTransitionScope, visibility: AnimatedVisibilityScope,
 ) {
+    var menuFor by remember { mutableStateOf<DeckProject?>(null) }
+    var deleteFor by remember { mutableStateOf<DeckProject?>(null) }
     Column(Modifier.fillMaxSize().safeDrawingPadding()) {
         BoxWithConstraints(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 10.dp)) {
             val compact = maxWidth < 440.dp
@@ -274,7 +279,7 @@ private fun Library(
                 Spacer(Modifier.weight(1f))
                 Segment(
                     items = listOf(
-                        SegmentItem("Projects", count = if (compact) null else if (recent == null) 0 else 1),
+                        SegmentItem("Projects", count = if (compact) null else projects.size),
                         SegmentItem("Demos", count = if (compact) null else demos.size),
                     ),
                     selected = if (tab == "projects") 0 else 1,
@@ -298,17 +303,38 @@ private fun Library(
         ) { current ->
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 22.dp)) {
                 Text(if (current == "projects") "Projects" else "Demos", color = Deck.Text, fontSize = 30.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp)
-                val subtitle = if (current == "demos") "Small apps to try the preview with" else if (recent == null) "Nothing imported yet" else "Saved on this device"
+                val subtitle = if (current == "demos") "Small apps to try the preview with" else if (projects.isEmpty()) "Nothing imported yet" else "Saved on this device"
                 Text(subtitle, color = Deck.Muted, fontSize = 13.5.sp, modifier = Modifier.padding(top = 6.dp, bottom = 18.dp))
                 if (current == "projects") {
-                    if (recent == null) EmptyState(onImport) { onTab("demos") }
-                    else Reveal { ProjectCard(recent.id, recent.name, "${recent.framework} · ${formatSize(recent.totalSize)}", recent.framework, shared, visibility, onOpenRecent) }
+                    if (projects.isEmpty()) EmptyState(onImport) { onTab("demos") }
+                    else {
+                        projects.forEachIndexed { index, saved ->
+                            Reveal(index * 45) {
+                                ProjectCard(
+                                    saved.id, saved.name, "${saved.framework} · ${formatSize(saved.totalSize)}", saved.framework,
+                                    shared, visibility,
+                                    onClick = { onOpenProject(saved) },
+                                    onLongPress = { menuFor = saved },
+                                )
+                            }
+                        }
+                        Text("Hold a project for more options.", color = Deck.Faint, fontSize = 11.5.sp, modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
+                    }
                 } else {
                     demos.forEachIndexed { index, demo ->
                         Reveal(index * 45) { ProjectCard(demo.id, demo.name, "${demo.framework} · ${demo.files} files", demo.framework, shared, visibility) { onDemo(demo.id) } }
                     }
                 }
             }
+        }
+        ProjectMenuSheet(
+            menuFor,
+            { menuFor = null },
+            { target -> menuFor = null; onOpenProject(target) },
+            { target -> menuFor = null; deleteFor = target },
+        )
+        deleteFor?.let { target ->
+            DeleteProjectDialog(target, { deleteFor = null }, { deleteFor = null; onDeleteProject(target) })
         }
     }
 }
@@ -333,8 +359,8 @@ private fun EmptyState(onImport: () -> Unit, onDemos: () -> Unit) {
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-private fun ProjectCard(id: String, name: String, meta: String, framework: String, shared: SharedTransitionScope, visibility: AnimatedVisibilityScope, onClick: () -> Unit) {
-    Pressable(Modifier.fillMaxWidth().padding(bottom = 8.dp).then(sharedProject("project-$id", shared, visibility)), RoundedCornerShape(16.dp), Deck.Surface, Deck.Line, onClick = onClick) {
+private fun ProjectCard(id: String, name: String, meta: String, framework: String, shared: SharedTransitionScope, visibility: AnimatedVisibilityScope, onClick: () -> Unit, onLongPress: (() -> Unit)? = null) {
+    Pressable(Modifier.fillMaxWidth().padding(bottom = 8.dp).then(sharedProject("project-$id", shared, visibility)), RoundedCornerShape(16.dp), Deck.Surface, Deck.Line, onClick = onClick, onLongClick = onLongPress) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(Color(0x0AFFFFFF)).border(1.dp, Deck.Line2, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
                 DeckIcon(brandFor(framework), Deck.Text2, size = 20.dp)
@@ -382,7 +408,7 @@ private fun LoadingScan() {
 }
 
 private data class DeviceSpec(val label: String, val width: Int, val height: Int)
-private val deviceSpecs = listOf(DeviceSpec("Fit", 0, 0), DeviceSpec("Phone", 390, 844), DeviceSpec("Tablet", 820, 1180))
+private val deviceSpecs = listOf(DeviceSpec("Fill", 0, 0), DeviceSpec("Phone", 390, 844), DeviceSpec("Tablet", 820, 1180))
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -438,7 +464,7 @@ private fun ProjectScreen(
                     val compact = maxWidth < 520.dp
                     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                         Segment(
-                            items = listOf(SegmentItem("Fit", DeckIcons.Scan), SegmentItem("Phone", DeckIcons.Smartphone), SegmentItem("Tablet", DeckIcons.Tablet)),
+                            items = listOf(SegmentItem("Fill", DeckIcons.Scan), SegmentItem("Phone", DeckIcons.Smartphone), SegmentItem("Tablet", DeckIcons.Tablet)),
                             selected = device, compact = compact,
                             modifier = Modifier.width(if (compact) 150.dp else 300.dp),
                         ) { device = it }
@@ -476,22 +502,35 @@ private fun ProjectScreen(
             val height by animateDpAsState(target.height, if (turning) snap() else spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessLow), label = "frameHeight")
             val shape = RoundedCornerShape(if (device == 1) 26.dp else if (framed) 16.dp else 0.dp)
             val (angle, oldW, oldH) = turnFrom
+            // A full-size WebView must not sit inside a permanent clip/layer: Android can then
+            // fail to composite it and the preview renders blank. Only wrap in a layer while turning.
+            val turnModifier = if (turning) {
+                Modifier.graphicsLayer {
+                    val progress = turn.value
+                    if (progress < 1f && cssWidth > 0) {
+                        rotationZ = angle * (1f - progress)
+                        scaleX = (oldH / cssWidth) + (1f - oldH / cssWidth) * progress
+                        scaleY = (oldW / cssHeight) + (1f - oldW / cssHeight) * progress
+                    }
+                }
+            } else Modifier
+            val frameModifier = if (framed) Modifier.border(6.dp, Color(0xFF1A1617), shape).clip(shape) else Modifier
             Box(
                 Modifier.size(width, height)
-                    .graphicsLayer {
-                        val p = turn.value
-                        if (p < 1f && cssWidth > 0) {
-                            rotationZ = angle * (1f - p)
-                            scaleX = (oldH / cssWidth) + (1f - oldH / cssWidth) * p
-                            scaleY = (oldW / cssHeight) + (1f - oldW / cssHeight) * p
-                        }
-                    }
-                    .then(if (framed) Modifier.border(6.dp, Color(0xFF1A1617), shape) else Modifier)
-                    .clip(shape).background(Color.White),
+                    .then(turnModifier)
+                    .then(frameModifier)
+                    .background(Color(0xFF0B0A0A)),
             ) {
                 if (settled) preview(project, cssWidth, cssHeight, !turning) else LoadingScan()
             }
             if (immersive) {
+                Row(Modifier.align(Alignment.TopStart).padding(12.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xD1161213)).border(1.dp, Deck.Line2, RoundedCornerShape(14.dp)).padding(4.dp)) {
+                    Segment(
+                        items = listOf(SegmentItem("Fill", DeckIcons.Scan), SegmentItem("Phone", DeckIcons.Smartphone), SegmentItem("Tablet", DeckIcons.Tablet)),
+                        selected = device, compact = true,
+                        modifier = Modifier.width(148.dp),
+                    ) { device = it }
+                }
                 Row(Modifier.align(Alignment.TopEnd).padding(12.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xD1161213)).border(1.dp, Deck.Line2, RoundedCornerShape(14.dp)).padding(4.dp)) {
                     if (framed) DeckIconButton(DeckIcons.RotateCw, {
                         turnFrom = Triple(if (!landscape) 90f else -90f, cssWidth.toFloat(), cssHeight.toFloat())
@@ -591,5 +630,66 @@ private fun InfoRow(label: String, value: String) {
     Column(Modifier.padding(bottom = 14.dp)) {
         Text(label, color = Deck.Faint, fontSize = 11.5.sp)
         Text(value, color = Deck.Text2, fontFamily = FontFamily.Monospace, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ProjectMenuSheet(target: DeckProject?, onDismiss: () -> Unit, onOpen: (DeckProject) -> Unit, onDelete: (DeckProject) -> Unit) {
+    if (target == null) return
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Deck.Surface,
+        tonalElevation = 0.dp,
+        shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
+        dragHandle = { Box(Modifier.padding(vertical = 10.dp).width(34.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(Deck.Line2)) },
+    ) {
+        Column(Modifier.padding(horizontal = 14.dp).padding(bottom = 28.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(46.dp).clip(RoundedCornerShape(12.dp)).background(Color(0x0AFFFFFF)).border(1.dp, Deck.Line2, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                    DeckIcon(brandFor(target.framework), Deck.Text2, size = 22.dp)
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(target.name, color = Deck.Text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Spacer(Modifier.height(2.dp))
+                    Text("${target.framework} · ${target.files.size} files · ${formatSize(target.totalSize)}", color = Deck.Muted, fontSize = 12.sp)
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            MenuAction(DeckIcons.ExternalLink, "Open project", null, destructive = false, onClick = { onOpen(target) })
+            Spacer(Modifier.height(6.dp))
+            MenuAction(DeckIcons.Trash2, "Delete project", Deck.AccentInk, destructive = true, onClick = { onDelete(target) })
+        }
+    }
+}
+
+@Composable
+private fun MenuAction(icon: ImageVector, label: String, tint: Color?, destructive: Boolean, onClick: () -> Unit) {
+    Pressable(
+        Modifier.fillMaxWidth().height(52.dp),
+        RoundedCornerShape(13.dp),
+        if (destructive) Color(0x14E0444E) else Color(0x08FFFFFF),
+        border = Deck.Line,
+        onClick = onClick,
+    ) {
+        Row(Modifier.fillMaxHeight().padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            DeckIcon(icon, tint ?: Deck.Text2, size = 19.dp)
+            Spacer(Modifier.width(13.dp))
+            Text(label, color = tint ?: Deck.Text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        }
+    }
+}
+
+@Composable
+private fun DeleteProjectDialog(target: DeckProject, onCancel: () -> Unit, onConfirm: () -> Unit) {
+    AppDialog("Delete project", DeckIcons.Trash2, onCancel) {
+        Text("Delete “${target.name}” and its ${target.files.size} files (${formatSize(target.totalSize)}) from this device? This cannot be undone.", color = Deck.Text2, fontSize = 13.sp, lineHeight = 19.sp)
+        Spacer(Modifier.height(18.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            GhostButton("Cancel", onCancel)
+            Spacer(Modifier.width(8.dp))
+            PrimaryButton("Delete", DeckIcons.Trash2, onConfirm)
+        }
     }
 }

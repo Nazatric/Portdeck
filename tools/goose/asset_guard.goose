@@ -11,5 +11,4 @@ fn check(path: const u8[:]) {
 fn main() {
     check("multiplatform/composeApp/src/androidMain/assets/engine/engine.js");
     check("multiplatform/composeApp/src/androidMain/assets/demos.json");
-    check("multiplatform/composeApp/src/wasmJsMain/resources/host.js");
 }

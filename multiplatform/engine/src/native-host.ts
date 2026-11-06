@@ -44,11 +44,15 @@ async function build(page?: string) {
     }
     token = `${project.id}-${Date.now()}`;
     frame.srcdoc = previewDocument();
-    send({ type: 'build', text: `Built in ${Math.round(performance.now() - started)} ms · ${bundle.report.modules} modules · ${bundle.report.runtime}` });
+    send({
+      type: 'build',
+      text: `Built in ${Math.round(performance.now() - started)} ms · ${bundle.report.modules} modules · ${bundle.report.runtime}`,
+    });
     bundle.report.warnings.forEach((warning) => send({ type: 'warn', text: warning }));
     send({ type: 'report', offline: bundle.report.offline, network: bundle.report.network, page: bundle.report.page });
   } catch (error) {
-    frame.srcdoc = '<!doctype html><body style="margin:0;display:grid;place-items:center;height:100vh;background:#121011;color:#bdb4b5;font:14px system-ui">Build failed. Open Console for details.</body>';
+    frame.srcdoc =
+      '<!doctype html><body style="margin:0;display:grid;place-items:center;height:100vh;background:#121011;color:#bdb4b5;font:14px system-ui">Build failed. Open Console for details.</body>';
     send({ type: 'error', text: error instanceof Error ? error.message : String(error) });
   }
 }
@@ -56,16 +60,31 @@ async function build(page?: string) {
 // Phone and tablet previews lay out at true device size and are scaled to the frame the native UI draws.
 let viewport = { width: 0, height: 0 };
 function applyViewport() {
-  if (!viewport.width) { Object.assign(frame.style, { width: '100%', height: '100%', transform: 'none' }); return; }
+  if (!viewport.width) {
+    Object.assign(frame.style, { width: '100%', height: '100%', transform: 'none' });
+    return;
+  }
   const scale = Math.min(window.innerWidth / viewport.width, window.innerHeight / viewport.height);
-  Object.assign(frame.style, { width: `${viewport.width}px`, height: `${viewport.height}px`, transform: `scale(${scale})`, transformOrigin: 'top left' });
+  Object.assign(frame.style, {
+    width: `${viewport.width}px`,
+    height: `${viewport.height}px`,
+    transform: `scale(${scale})`,
+    transformOrigin: 'top left',
+  });
 }
-window.portdeckViewport = (width, height) => { viewport = { width, height }; applyViewport(); };
+window.portdeckViewport = (width, height) => {
+  viewport = { width, height };
+  applyViewport();
+};
 window.addEventListener('resize', applyViewport);
 
 window.portdeckBuild = async (raw: string, storage: string) => {
   let saved: Record<string, string> = {};
-  try { saved = JSON.parse(storage || '{}'); } catch { /* optional */ }
+  try {
+    saved = JSON.parse(storage || '{}');
+  } catch {
+    /* optional */
+  }
   current = { project: JSON.parse(raw) as NativeProject, storage: saved };
   await build();
 };
@@ -80,7 +99,10 @@ window.addEventListener('message', (event) => {
     return;
   }
   if (data.token !== token) return;
-  if (data.type === 'navigate' && typeof data.path === 'string') { void build(data.path); return; }
+  if (data.type === 'navigate' && typeof data.path === 'string') {
+    void build(data.path);
+    return;
+  }
   if (data.type === 'log') send({ type: data.level, text: data.text });
   if (data.type === 'ready') send({ type: 'ready', text: 'Preview ready' });
   if (data.type === 'storage') send({ type: 'storage', data: data.data });

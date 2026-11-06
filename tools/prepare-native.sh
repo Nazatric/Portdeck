@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bundles the preview engine for Android and Kotlin/Wasm.
+# Bundles the preview engine for Android.
 # The engine source lives in multiplatform/engine; this is a convenience wrapper.
 set -euo pipefail
 cd "$(dirname "$0")/../multiplatform/engine"

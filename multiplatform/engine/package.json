@@ -1,12 +1,14 @@
 {
   "name": "portdeck-engine",
   "private": true,
-  "version": "1.1.0",
-  "description": "Self-contained source of the preview engine bundled into the PortDeck Android and Kotlin/Wasm apps. Builds engine.js (Android asset) and host.js (Wasm resource) from src/.",
+  "version": "1.2.0",
+  "description": "Self-contained source of the preview engine bundled into the PortDeck Android app. Builds engine.js (Android asset) from src/.",
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "test": "node test/run.mjs"
+    "test": "node test/run.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@babel/standalone": "8.1.1",
@@ -14,6 +16,7 @@
     "es-module-lexer": "^3.0.4"
   },
   "devDependencies": {
-    "esbuild": "^0.28.2"
+    "esbuild": "^0.28.2",
+    "prettier": "^3.6.2"
   }
 }

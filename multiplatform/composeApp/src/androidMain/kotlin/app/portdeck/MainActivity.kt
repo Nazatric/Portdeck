@@ -77,7 +77,7 @@ class MainActivity : ComponentActivity() {
         requestHighestRefreshRate()
         setContent {
             var project by remember { mutableStateOf<DeckProject?>(null) }
-            var recent by remember { mutableStateOf(readRecent()) }
+            var projects by remember { mutableStateOf(readProjects()) }
             var error by remember { mutableStateOf("") }
             var logs by remember { mutableStateOf<List<String>>(emptyList()) }
             var reload by remember { mutableIntStateOf(0) }
@@ -87,9 +87,21 @@ class MainActivity : ComponentActivity() {
                 scope.launch {
                     try {
                         val imported = withContext(Dispatchers.IO) { load() }
-                        withContext(Dispatchers.IO) { filesDir.resolve("recent-project.json").writeText(projectJson.encodeToString(imported)) }
-                        recent = imported; project = imported; logs = emptyList()
+                        withContext(Dispatchers.IO) { persistProjects(listOf(imported) + projects.filterNot { it.id == imported.id }) }
+                        projects = listOf(imported) + projects.filterNot { it.id == imported.id }
+                        project = imported; logs = emptyList()
                     } catch (failure: Exception) { error = failure.message ?: "Could not import this project." }
+                }
+            }
+
+            fun deleteProject(target: DeckProject) {
+                scope.launch {
+                    withContext(Dispatchers.IO) {
+                        File(filesDir, "projects/${target.id}").deleteRecursively()
+                        persistProjects(projects.filterNot { it.id == target.id })
+                    }
+                    projects = projects.filterNot { it.id == target.id }
+                    if (project?.id == target.id) { project = null; logs = emptyList() }
                 }
             }
 
@@ -108,7 +120,7 @@ class MainActivity : ComponentActivity() {
             }
 
             PortDeckApp(
-                project = project, recent = recent, error = error, logs = logs,
+                project = project, projects = projects, error = error, logs = logs,
                 onPick = { kind ->
                     when (kind) {
                         "folder" -> folderPicker.launch(null)
@@ -120,7 +132,8 @@ class MainActivity : ComponentActivity() {
                     try { project = projectJson.decodeFromString<List<DeckProject>>(assets.open("demos.json").bufferedReader().readText()).first { it.id == id }; logs = emptyList() }
                     catch (failure: Exception) { error = failure.message ?: "Could not open the demo." }
                 },
-                onOpenRecent = { project = recent; logs = emptyList() },
+                onOpenProject = { target -> project = target; logs = emptyList() },
+                onDeleteProject = ::deleteProject,
                 onBack = { if (error.isNotEmpty()) error = "" else { project = null; logs = emptyList() } },
                 onReload = { reload++; logs = emptyList() },
                 onImmersive = { setSystemBarsHidden(it) },
@@ -161,9 +174,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun readRecent(): DeckProject? = try {
-        projectJson.decodeFromString<DeckProject>(filesDir.resolve("recent-project.json").readText())
-    } catch (_: Exception) { null }
+    private fun readProjects(): List<DeckProject> = try {
+        projectJson.decodeFromString<List<DeckProject>>(filesDir.resolve("projects.json").readText())
+    } catch (_: Exception) {
+        // One-time migration of the old single-recent-project store.
+        runCatching {
+            val legacy = projectJson.decodeFromString<DeckProject>(filesDir.resolve("recent-project.json").readText())
+            listOf(legacy).also(::persistProjects)
+        }.getOrDefault(emptyList())
+    }
+
+    private fun persistProjects(list: List<DeckProject>) {
+        try { filesDir.resolve("projects.json").writeText(projectJson.encodeToString(list)) } catch (_: Exception) { }
+    }
 
     private fun chooseUpload(callback: ValueCallback<Array<Uri>>, params: WebChromeClient.FileChooserParams): Boolean = try {
         uploadCallback?.onReceiveValue(null)

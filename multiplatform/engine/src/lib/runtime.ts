@@ -341,7 +341,9 @@ function vendorBlobs(line: '18' | '19') {
     const vendor = REACT_VENDORS[line];
     cached = {
       bundle: new Blob([vendor.bundle], { type: 'text/javascript' }),
-      modules: Object.fromEntries(Object.entries(vendor.modules).map(([spec, code]) => [spec, new Blob([code], { type: 'text/javascript' })])),
+      modules: Object.fromEntries(
+        Object.entries(vendor.modules).map(([spec, code]) => [spec, new Blob([code], { type: 'text/javascript' })]),
+      ),
     };
     vendorCache.set(line, cached);
   }
@@ -351,11 +353,18 @@ function vendorBlobs(line: '18' | '19') {
 let tailwindBlob: Promise<Blob> | null = null;
 let idbBlob: Promise<Blob> | null = null;
 
-export async function createPayload(bundle: PreviewBundle, files: { blobs: Map<string, Blob> } | { assetBase: string; paths: string[] }, storage: Record<string, string>, context: { pageUrl?: string; basePath?: string } = {}): Promise<PreviewPayload> {
+export async function createPayload(
+  bundle: PreviewBundle,
+  files: { blobs: Map<string, Blob> } | { assetBase: string; paths: string[] },
+  storage: Record<string, string>,
+  context: { pageUrl?: string; basePath?: string } = {},
+): Promise<PreviewPayload> {
   idbBlob ??= import('./vendor/indexeddb.generated').then((module) => new Blob([module.FAKE_INDEXEDDB], { type: 'text/javascript' }));
   const vendorAssets: Record<string, Blob> = { '@vendor/idb': await idbBlob };
   if (bundle.tailwind) {
-    tailwindBlob ??= import('./vendor/tailwind.generated').then((module) => new Blob([module.TAILWIND_BROWSER], { type: 'text/javascript' }));
+    tailwindBlob ??= import('./vendor/tailwind.generated').then(
+      (module) => new Blob([module.TAILWIND_BROWSER], { type: 'text/javascript' }),
+    );
     vendorAssets['@vendor/tailwind'] = await tailwindBlob;
   }
   const local = 'blobs' in files;
@@ -385,6 +394,10 @@ export async function createPayload(bundle: PreviewBundle, files: { blobs: Map<s
 export function urlSource(base: string, paths: string[]): FileSource {
   const known = new Set(paths);
   const url = (path: string) => base + path.split('/').map(encodeURIComponent).join('/');
-  const get = async (path: string) => { const response = await fetch(url(path)); if (!response.ok) throw new Error(`File not found: ${path}`); return response; };
+  const get = async (path: string) => {
+    const response = await fetch(url(path));
+    if (!response.ok) throw new Error(`File not found: ${path}`);
+    return response;
+  };
   return { has: (path) => known.has(path), text: async (path) => (await get(path)).text(), blob: async (path) => (await get(path)).blob() };
 }

@@ -44,20 +44,44 @@ export default function Page(){
 const timerCss = `*{box-sizing:border-box}body{background:#f4f4f1;margin:0;color:#333733;font-family:Arial,sans-serif}main{max-width:420px;margin:auto;text-align:center;padding:34px 24px}.top{text-align:left;font-size:10px;letter-spacing:.12em;color:#81877f}h1{font-size:29px;font-weight:500;margin:48px 0 7px}p{font-size:13px;color:#8d918a}.tabs{display:flex;justify-content:center;gap:5px;margin:30px 0 22px}.tabs button{border:0;background:none;color:#92978f;padding:9px 10px;font-size:9px;cursor:pointer}.tabs button.active{background:#e3e6df;color:#4f5b4c}.dial{position:relative;width:230px;height:230px;margin:auto}.dial svg{transform:rotate(-90deg);width:100%}.dial circle{fill:none;stroke:#e0e3dc;stroke-width:3}.dial circle.progress{stroke:#75836f}.dial div{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center}.dial strong{font-size:48px;font-weight:400}.dial small{font-size:9px;color:#989d94;margin-top:8px}.start{margin:27px auto;background:#435044;color:white;padding:15px 30px;border:0;min-width:150px;font-size:11px;cursor:pointer}.foot{margin:30px auto 0;border-top:1px solid #e1e4dc;padding-top:18px;font-size:9px;color:#979c93}.foot b{margin-left:12px;color:#5c6658}`;
 
 const definitions: { meta: Pick<DeckProject, 'id' | 'name' | 'framework' | 'entry'>; files: InlineFile[] }[] = [
-  { meta: { id: 'demo-split', name: 'Tip & Split', framework: 'React', entry: 'index.html' }, files: [
-    file('index.html', '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tip & Split</title></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>'),
-    file('package.json', JSON.stringify({ name: 'tip-and-split', dependencies: { react: '18.3.1', 'react-dom': '18.3.1' } }, null, 2)),
-    file('src/main.jsx', splitApp), file('src/style.css', splitCss),
-  ] },
-  { meta: { id: 'demo-notes', name: 'Scratchpad', framework: 'HTML', entry: 'index.html' }, files: [file('index.html', notesHtml), file('style.css', notesCss), file('app.js', notesJs)] },
-  { meta: { id: 'demo-timer', name: 'Focus Timer', framework: 'Next.js', entry: 'app/page.jsx' }, files: [
-    file('package.json', JSON.stringify({ name: 'focus-timer', dependencies: { next: '14.2.0', react: '18.3.1', 'react-dom': '18.3.1' } }, null, 2)),
-    file('app/page.jsx', timerApp), file('app/style.css', timerCss),
-  ] },
+  {
+    meta: { id: 'demo-split', name: 'Tip & Split', framework: 'React', entry: 'index.html' },
+    files: [
+      file(
+        'index.html',
+        '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tip & Split</title></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>',
+      ),
+      file('package.json', JSON.stringify({ name: 'tip-and-split', dependencies: { react: '18.3.1', 'react-dom': '18.3.1' } }, null, 2)),
+      file('src/main.jsx', splitApp),
+      file('src/style.css', splitCss),
+    ],
+  },
+  {
+    meta: { id: 'demo-notes', name: 'Scratchpad', framework: 'HTML', entry: 'index.html' },
+    files: [file('index.html', notesHtml), file('style.css', notesCss), file('app.js', notesJs)],
+  },
+  {
+    meta: { id: 'demo-timer', name: 'Focus Timer', framework: 'Next.js', entry: 'app/page.jsx' },
+    files: [
+      file(
+        'package.json',
+        JSON.stringify({ name: 'focus-timer', dependencies: { next: '14.2.0', react: '18.3.1', 'react-dom': '18.3.1' } }, null, 2),
+      ),
+      file('app/page.jsx', timerApp),
+      file('app/style.css', timerCss),
+    ],
+  },
 ];
 
 const demos = definitions.map((definition) => inlineProject(definition.meta, definition.files));
 export const demoProjects: DeckProject[] = demos.map((demo) => demo.project);
 export const demoBlobs = new Map(demos.map((demo) => [demo.project.id, demo.blobs]));
 /** Inline sources, exported to the native apps as demos.json. */
-export const demoSources = demos.map((demo, index) => ({ ...demo.project, files: definitions[index].files.map((item) => ({ ...item, size: new TextEncoder().encode(item.content).length, type: demo.project.files.find((entry) => entry.path === item.path)?.type ?? '' })) }));
+export const demoSources = demos.map((demo, index) => ({
+  ...demo.project,
+  files: definitions[index].files.map((item) => ({
+    ...item,
+    size: new TextEncoder().encode(item.content).length,
+    type: demo.project.files.find((entry) => entry.path === item.path)?.type ?? '',
+  })),
+}));
