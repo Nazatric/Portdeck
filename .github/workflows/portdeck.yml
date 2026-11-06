@@ -12,8 +12,36 @@ permissions:
 
 # This repo builds the native PortDeck app (Kotlin Multiplatform / Compose Multiplatform):
 # an Android APK and a Kotlin/Wasm distribution. The Next.js web app is intentionally excluded.
+# The preview engine sources live in multiplatform/engine and bundle into the
+# committed engine.js / host.js assets; the engine job keeps them in sync.
 
 jobs:
+  engine:
+    name: Verify preview engine
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: multiplatform/engine/package-lock.json
+
+      - name: Install engine dependencies
+        working-directory: multiplatform/engine
+        run: npm ci --no-audit --no-fund
+
+      - name: Run engine smoke tests
+        working-directory: multiplatform/engine
+        run: npm test
+
+      - name: Rebuild engine and check the committed bundles are in sync
+        working-directory: multiplatform/engine
+        run: |
+          npm run build
+          git diff --exit-code -- ../composeApp/src/androidMain/assets/engine/engine.js ../composeApp/src/wasmJsMain/resources/host.js
+
   android:
     name: Build Android APK
     runs-on: ubuntu-latest

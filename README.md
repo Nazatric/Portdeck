@@ -33,7 +33,7 @@ node tools/generate-assets.mjs
 
 ## Native targets (Kotlin + Compose Multiplatform)
 
-`multiplatform/` holds shared Compose UI for an Android app and a Kotlin/Wasm web target. Both use the same palette, icon set, and offline preview engine as the web app.
+`multiplatform/` holds shared Compose UI for an Android app and a Kotlin/Wasm web target. Both use the same palette, icon set, and offline preview engine. The engine source lives in `multiplatform/engine/` and bundles into the committed `engine.js` / `host.js` assets the apps serve.
 
 ```sh
 npm ci
@@ -49,9 +49,23 @@ Projects open with a shared-element morph from the card to the workspace. The li
 
 Known limitation: in headless testing of the Kotlin/Wasm build, the toolbar directly above the live preview was not repainted while the preview overlay was visible. Layout and input remain correct, and the issue disappears when the overlay is hidden. It has not yet been checked on a GPU-accelerated browser. The Next.js web app and Android app do not use this overlay.
 
+### Preview engine (`multiplatform/engine/`)
+
+The preview engine (compiler, sandboxed runtime, Android and Wasm hosts) is TypeScript source committed under `multiplatform/engine/`. Edit it there; never hand-edit the bundles.
+
+```sh
+cd multiplatform/engine
+npm ci
+npm test        # headless end-to-end check of the preview pipeline (all demos)
+npm run build   # rewrites ../composeApp/src/androidMain/assets/engine/engine.js and
+                # ../composeApp/src/wasmJsMain/resources/host.js
+```
+
+Commit both the source and the rebuilt bundles. CI fails the "Verify preview engine" job when the committed bundles do not match the source.
+
 ## Build in CI
 
-Push to GitHub and open **Actions > PortDeck Builds**. Separate jobs build the web app, the Android app, and the Wasm distribution and upload their artifacts.
+Push to GitHub and open **Actions > PortDeck Builds**. The jobs verify the preview engine bundles, build the Android app, and build the Wasm distribution, uploading their artifacts.
 
 ## Goose
 
