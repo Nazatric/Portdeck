@@ -329,6 +329,7 @@ class MainActivity : ComponentActivity() {
                         if (request.isForMainFrame && (errorResponse?.statusCode ?: 200) >= 400) onLog("ERROR: The preview page returned HTTP ${errorResponse?.statusCode}.")
                     }
                     override fun onPageFinished(view: WebView, url: String) {
+                        onLog("Preview engine page loaded.")
                         view.evaluateJavascript("window.portdeckViewport(${viewport[0]},${viewport[1]});window.__pdPayload='';window.__pdStorage='';", null)
                         injectChunks(view, "__pdPayload", payload)
                         injectChunks(view, "__pdStorage", bridge.readStorage())
