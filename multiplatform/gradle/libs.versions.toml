@@ -8,7 +8,7 @@ activity-compose = "1.10.1"
 core-ktx = "1.16.0"
 documentfile = "1.0.1"
 webkit = "1.13.0"
-spotless = "6.25.0"
+spotless = "7.0.4"
 
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization-json" }
