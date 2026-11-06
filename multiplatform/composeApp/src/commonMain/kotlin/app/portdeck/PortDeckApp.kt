@@ -322,7 +322,7 @@ private fun Library(
                     }
                 } else {
                     demos.forEachIndexed { index, demo ->
-                        Reveal(index * 45) { ProjectCard(demo.id, demo.name, "${demo.framework} · ${demo.files} files", demo.framework, shared, visibility) { onDemo(demo.id) } }
+                        Reveal(index * 45) { ProjectCard(demo.id, demo.name, "${demo.framework} · ${demo.files} files", demo.framework, shared, visibility, onClick = { onDemo(demo.id) }) }
                     }
                 }
             }
