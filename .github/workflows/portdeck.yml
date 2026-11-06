@@ -91,7 +91,15 @@ jobs:
 
       - name: Format Kotlin sources with spotless/ktlint
         working-directory: multiplatform
-        run: gradle :composeApp:spotlessApply --no-daemon -Dorg.gradle.jvmargs="-Xmx2g -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
+        run: |
+          set +e
+          gradle :composeApp:spotlessApply --no-daemon -Dorg.gradle.jvmargs="-Xmx2g -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8" > /tmp/spotless.log 2>&1
+          code=$?
+          if [ $code -ne 0 ]; then
+            hint=$(grep -E -i -m 6 'what went wrong|unresolved|could not|failed|exception|error|non-zero' /tmp/spotless.log | sed 's/[%\r]//g' | tr '\n' '|' | cut -c1-1200)
+            echo "::error::spotlessApply exit $code :: $hint"
+            exit $code
+          fi
 
       - name: Warn if formatting drift snuck in
         continue-on-error: true
